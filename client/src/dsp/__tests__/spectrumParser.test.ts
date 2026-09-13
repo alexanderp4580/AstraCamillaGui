@@ -14,10 +14,13 @@ describe('spectrumParser', () => {
       expect(parseSpectrumData('string')).toBeNull();
     });
 
-    it('should return null for arrays with length < 3 (reject legacy format)', () => {
+    it('should return null for arrays with length < 2 (below the server\'s num_bins floor)', () => {
       expect(parseSpectrumData([])).toBeNull();
       expect(parseSpectrumData([0.5])).toBeNull();
-      expect(parseSpectrumData([0.5, 0.6])).toBeNull();
+    });
+
+    it('should accept the server\'s minimum bin count of 2', () => {
+      expect(parseSpectrumData([0.5, 0.6])).toEqual({ binsDb: [0.5, 0.6] });
     });
 
     it('should parse dBFS spectrum bins', () => {

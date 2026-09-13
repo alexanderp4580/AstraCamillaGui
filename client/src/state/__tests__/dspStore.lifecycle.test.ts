@@ -1,6 +1,6 @@
 /**
  * dspStore lifecycle event tests
- * Verifies degraded/error state derivation and failure logging
+ * Verifies connected/error state derivation and failure logging
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
@@ -11,7 +11,6 @@ import type { SocketLifecycleEvent, DspEventInfo } from '../../lib/camillaDSP';
 vi.mock('../../lib/camillaDSP', () => {
   class MockCamillaDSP {
     connected = false;
-    spectrumConnected = false;
     config = {
       devices: { capture: { channels: 2 }, playback: { channels: 2 } },
       filters: {},
@@ -19,7 +18,7 @@ vi.mock('../../lib/camillaDSP', () => {
       pipeline: [],
       processors: {},
     };
-    
+
     onDspSuccess?: (info: DspEventInfo) => void;
     onDspFailure?: (info: DspEventInfo) => void;
     onSocketLifecycleEvent?: (event: SocketLifecycleEvent) => void;
@@ -30,21 +29,15 @@ vi.mock('../../lib/camillaDSP', () => {
 
     async connect() {
       this.connected = true;
-      this.spectrumConnected = true;
       return true;
     }
 
     disconnect() {
       this.connected = false;
-      this.spectrumConnected = false;
     }
 
     isControlSocketOpen() {
       return this.connected;
-    }
-
-    isSpectrumSocketOpen() {
-      return this.spectrumConnected;
     }
 
     async getVolume() {
@@ -74,10 +67,6 @@ vi.mock('../../lib/camillaDSP', () => {
     async getConfigDescription() {
       return '';
     }
-
-    async getSpectrumData() {
-      return null;
-    }
   }
 
   return {
@@ -105,9 +94,9 @@ describe('dspStore lifecycle event handling', () => {
     disconnect();
   });
 
-  it('should transition to degraded when spectrum socket closes', async () => {
+  it('should transition to connected when control socket opens', async () => {
     // Connect (this wires up callbacks)
-    await connect('127.0.0.1', 1234, 1235);
+    await connect('127.0.0.1', 1234);
 
     // Get the DSP instance and its lifecycle callback
     const dsp = getDspInstance();
@@ -116,7 +105,6 @@ describe('dspStore lifecycle event handling', () => {
 
     const lifecycleCallback = dsp!.onSocketLifecycleEvent!;
 
-    // Simulate both sockets opening
     lifecycleCallback({
       socket: 'control',
       type: 'open',
@@ -124,53 +112,22 @@ describe('dspStore lifecycle event handling', () => {
       timestampMs: Date.now(),
     });
 
-    lifecycleCallback({
-      socket: 'spectrum',
-      type: 'open',
-      message: 'Spectrum socket connected',
-      timestampMs: Date.now(),
-    });
-
-    // Verify state is connected
-    let state = get(dspState);
+    const state = get(dspState);
     expect(state.connectionState).toBe('connected');
     expect(state.controlConnected).toBe(true);
-    expect(state.spectrumConnected).toBe(true);
-
-    // Simulate spectrum socket closing
-    lifecycleCallback({
-      socket: 'spectrum',
-      type: 'close',
-      message: 'WebSocket closed',
-      timestampMs: Date.now(),
-    });
-
-    // Verify state is now degraded
-    state = get(dspState);
-    expect(state.connectionState).toBe('degraded');
-    expect(state.controlConnected).toBe(true);
-    expect(state.spectrumConnected).toBe(false);
   });
 
   it('should transition to error when control socket closes', async () => {
     // Connect
-    await connect('127.0.0.1', 1234, 1235);
+    await connect('127.0.0.1', 1234);
 
     const dsp = getDspInstance();
     const lifecycleCallback = dsp!.onSocketLifecycleEvent!;
 
-    // Simulate both sockets opening
     lifecycleCallback({
       socket: 'control',
       type: 'open',
       message: 'Control socket connected',
-      timestampMs: Date.now(),
-    });
-
-    lifecycleCallback({
-      socket: 'spectrum',
-      type: 'open',
-      message: 'Spectrum socket connected',
       timestampMs: Date.now(),
     });
 
@@ -190,7 +147,7 @@ describe('dspStore lifecycle event handling', () => {
 
   it('should log socket lifecycle close/error events to failures', async () => {
     // Connect
-    await connect('127.0.0.1', 1234, 1235);
+    await connect('127.0.0.1', 1234);
 
     const dsp = getDspInstance();
     const lifecycleCallback = dsp!.onSocketLifecycleEvent!;
@@ -199,9 +156,9 @@ describe('dspStore lifecycle event handling', () => {
     let state = get(dspState);
     const initialFailureCount = state.failures.length;
 
-    // Simulate spectrum socket closing
+    // Simulate control socket closing
     const closeEvent: SocketLifecycleEvent = {
-      socket: 'spectrum',
+      socket: 'control',
       type: 'close',
       message: 'Connection lost',
       timestampMs: Date.now(),
@@ -214,7 +171,7 @@ describe('dspStore lifecycle event handling', () => {
     expect(state.failures.length).toBe(initialFailureCount + 1);
 
     const lifecycleFailure = state.failures.find(
-      f => f.command === 'Socket Lifecycle' && f.socket === 'spectrum'
+      f => f.command === 'Socket Lifecycle' && f.socket === 'control'
     );
 
     expect(lifecycleFailure).toBeDefined();
@@ -222,14 +179,13 @@ describe('dspStore lifecycle event handling', () => {
     expect(lifecycleFailure?.response).toContain('Connection lost');
   });
 
-  it('should handle spectrum open->close->open cycle correctly', async () => {
+  it('should handle control open->close->open cycle correctly', async () => {
     // Connect
-    await connect('127.0.0.1', 1234, 1235);
+    await connect('127.0.0.1', 1234);
 
     const dsp = getDspInstance();
     const lifecycleCallback = dsp!.onSocketLifecycleEvent!;
 
-    // Simulate initial open events to establish proper state
     lifecycleCallback({
       socket: 'control',
       type: 'open',
@@ -237,44 +193,33 @@ describe('dspStore lifecycle event handling', () => {
       timestampMs: Date.now(),
     });
 
-    lifecycleCallback({
-      socket: 'spectrum',
-      type: 'open',
-      message: 'Spectrum socket connected',
-      timestampMs: Date.now(),
-    });
-
-    // After both open events, verify fully connected
     let state = get(dspState);
     expect(state.connectionState).toBe('connected');
     expect(state.controlConnected).toBe(true);
-    expect(state.spectrumConnected).toBe(true);
 
-    // Close spectrum
+    // Close
     lifecycleCallback({
-      socket: 'spectrum',
+      socket: 'control',
       type: 'close',
       message: 'Connection lost',
       timestampMs: Date.now(),
     });
 
-    // Verify degraded
     state = get(dspState);
-    expect(state.connectionState).toBe('degraded');
-    expect(state.spectrumConnected).toBe(false);
+    expect(state.connectionState).toBe('error');
+    expect(state.controlConnected).toBe(false);
 
-    // Reopen spectrum
+    // Reopen
     lifecycleCallback({
-      socket: 'spectrum',
+      socket: 'control',
       type: 'open',
-      message: 'Spectrum socket reconnected',
+      message: 'Control socket reconnected',
       timestampMs: Date.now(),
     });
 
-    // Verify back to connected
     state = get(dspState);
     expect(state.connectionState).toBe('connected');
-    expect(state.spectrumConnected).toBe(true);
+    expect(state.controlConnected).toBe(true);
   });
 
   it('should apply exponential backoff to reconnect attempts', async () => {
@@ -287,7 +232,6 @@ describe('dspStore lifecycle event handling', () => {
         if (key === 'camillaDSP.autoReconnect') return 'true';
         if (key === 'camillaDSP.server') return '127.0.0.1';
         if (key === 'camillaDSP.controlPort') return '1234';
-        if (key === 'camillaDSP.spectrumPort') return '1235';
         return null;
       }),
       setItem: vi.fn(),
@@ -302,7 +246,7 @@ describe('dspStore lifecycle event handling', () => {
     const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
     // First establish a successful connection
-    await connect('127.0.0.1', 1234, 1235);
+    await connect('127.0.0.1', 1234);
     const dsp = getDspInstance();
     const lifecycleCallback = dsp!.onSocketLifecycleEvent!;
 
@@ -324,7 +268,7 @@ describe('dspStore lifecycle event handling', () => {
 
       // Run timers to trigger reconnect attempts
       await vi.advanceTimersByTimeAsync(1000); // First attempt
-      await vi.advanceTimersByTimeAsync(2000); // Second attempt  
+      await vi.advanceTimersByTimeAsync(2000); // Second attempt
       await vi.advanceTimersByTimeAsync(5000); // Third attempt
 
       // Verify exponential backoff by checking console.log messages

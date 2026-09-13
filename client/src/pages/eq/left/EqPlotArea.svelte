@@ -208,13 +208,13 @@
     });
   }
   
-  // Reactive: Start/stop spectrum polling based on readiness
+  // Reactive: Start/stop spectrum subscription based on readiness. There's only one
+  // DSP connection now (see ANALYSIS-API-PLAN.md) — "ready" just means it's connected.
   $: {
     const state = $connectionState;
-    const dsp = getDspInstance();
-    const isReady = state === 'connected' && (dsp?.isSpectrumSocketOpen() ?? false);
+    const isReady = state === 'connected';
     const shouldBeEnabled = $spectrumVizEnabled && isReady;
-    
+
     if (spectrumController) {
       spectrumController.setEnabled(shouldBeEnabled);
     }

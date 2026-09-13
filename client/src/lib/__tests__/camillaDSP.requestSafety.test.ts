@@ -27,10 +27,8 @@ beforeAll(() => {
 
 describe('CamillaDSP Request Safety', () => {
   let wsServer: WebSocketServer;
-  let wsSpectrumServer: WebSocketServer;
   let dsp: CamillaDSP;
   let testPort: number;
-  let testSpectrumPort: number;
 
   // Mock config for GetConfigJson
   const mockConfig = {
@@ -45,33 +43,13 @@ describe('CamillaDSP Request Safety', () => {
   };
 
   beforeEach(async () => {
-    // Create control WebSocket server with ephemeral port (port 0)
+    // Create WebSocket server with ephemeral port (port 0)
     wsServer = new WebSocketServer({ port: 0 });
-    
-    // Create spectrum WebSocket server with ephemeral port (port 0)
-    wsSpectrumServer = new WebSocketServer({ port: 0 });
-    
-    // Wait for servers to be listening and get assigned ports
+
     await new Promise<void>((resolve) => {
-      let controlReady = false;
-      let spectrumReady = false;
-      
-      const checkReady = () => {
-        if (controlReady && spectrumReady) {
-          testPort = (wsServer.address() as any).port;
-          testSpectrumPort = (wsSpectrumServer.address() as any).port;
-          resolve();
-        }
-      };
-      
       wsServer.on('listening', () => {
-        controlReady = true;
-        checkReady();
-      });
-      
-      wsSpectrumServer.on('listening', () => {
-        spectrumReady = true;
-        checkReady();
+        testPort = (wsServer.address() as any).port;
+        resolve();
       });
     });
   });
@@ -80,14 +58,12 @@ describe('CamillaDSP Request Safety', () => {
     if (dsp) {
       dsp.disconnect();
     }
-    
+
     // Close all connections
     wsServer.clients.forEach((client) => client.close());
-    wsSpectrumServer.clients.forEach((client) => client.close());
-    
-    // Close servers
+
+    // Close server
     await new Promise<void>((resolve) => wsServer.close(() => resolve()));
-    await new Promise<void>((resolve) => wsSpectrumServer.close(() => resolve()));
   });
 
   describe('Request Serialization (R1)', () => {
@@ -133,13 +109,10 @@ describe('CamillaDSP Request Safety', () => {
         });
       });
 
-      wsSpectrumServer.on('connection', (ws) => {
-        ws.on('message', () => {}); // Spectrum socket exists but unused in this test
-      });
 
       // Connect DSP
       dsp = new CamillaDSP({ controlTimeoutMs: 5000 });
-      await dsp.connect('localhost', testPort, testSpectrumPort);
+      await dsp.connect('localhost', testPort);
 
       // Start both requests simultaneously
       const promise1 = dsp.getVersion();
@@ -199,12 +172,9 @@ describe('CamillaDSP Request Safety', () => {
         });
       });
 
-      wsSpectrumServer.on('connection', (ws) => {
-        ws.on('message', () => {});
-      });
 
       dsp = new CamillaDSP();
-      await dsp.connect('localhost', testPort, testSpectrumPort);
+      await dsp.connect('localhost', testPort);
 
       // Fire multiple requests
       const promises = [
@@ -237,12 +207,9 @@ describe('CamillaDSP Request Safety', () => {
         });
       });
 
-      wsSpectrumServer.on('connection', (ws) => {
-        ws.on('message', () => {});
-      });
 
       dsp = new CamillaDSP({ controlTimeoutMs: 500 });
-      await dsp.connect('localhost', testPort, testSpectrumPort);
+      await dsp.connect('localhost', testPort);
 
       // Test via private method to verify timeout rejection
       await expect((dsp as any).sendDSPMessage('GetVersion')).rejects.toThrow(/timed out/i);
@@ -267,13 +234,10 @@ describe('CamillaDSP Request Safety', () => {
         });
       });
 
-      wsSpectrumServer.on('connection', (ws) => {
-        ws.on('message', () => {});
-      });
 
       const shortTimeout = 200;
       dsp = new CamillaDSP({ controlTimeoutMs: shortTimeout });
-      await dsp.connect('localhost', testPort, testSpectrumPort);
+      await dsp.connect('localhost', testPort);
 
       const start = Date.now();
       const version = await dsp.getVersion();
@@ -313,12 +277,9 @@ describe('CamillaDSP Request Safety', () => {
         });
       });
 
-      wsSpectrumServer.on('connection', (ws) => {
-        ws.on('message', () => {});
-      });
 
       dsp = new CamillaDSP({ controlTimeoutMs: 300 });
-      await dsp.connect('localhost', testPort, testSpectrumPort);
+      await dsp.connect('localhost', testPort);
 
       // First request should timeout and return null
       const version1 = await dsp.getVersion();
@@ -330,38 +291,35 @@ describe('CamillaDSP Request Safety', () => {
       expect(requestCount).toBe(2);
     });
 
-    it('should timeout spectrum requests independently', async () => {
-      // Control socket responds normally
+    it('should time out a Subscribe request that never gets an ack', async () => {
       wsServer.on('connection', (ws) => {
         ws.on('message', (data) => {
           const request = JSON.parse(data.toString());
           const command = typeof request === 'string' ? request : Object.keys(request)[0];
+          if (command === 'GetConfigJson') {
+            ws.send(JSON.stringify({
+              GetConfigJson: { result: 'Ok', value: JSON.stringify(mockConfig) },
+            }));
+            return;
+          }
+          if (command === 'Subscribe') {
+            // Never ack — simulates an older, unpatched CamillaDSP that doesn't
+            // understand the command at all and just never replies.
+            return;
+          }
           ws.send(JSON.stringify({
-            [command]: { result: 'Ok', value: command === 'GetConfigJson' ? JSON.stringify(mockConfig) : 'control-ok' },
+            [command]: { result: 'Ok', value: 'ok' },
           }));
         });
       });
 
-      // Spectrum socket never responds
-      wsSpectrumServer.on('connection', (ws) => {
-        ws.on('message', () => {
-          // Never respond
-        });
-      });
+      dsp = new CamillaDSP({ controlTimeoutMs: 300 });
+      await dsp.connect('localhost', testPort);
 
-      dsp = new CamillaDSP({ 
-        controlTimeoutMs: 2000,
-        spectrumTimeoutMs: 300 // Short spectrum timeout
-      });
-      await dsp.connect('localhost', testPort, testSpectrumPort);
-
-      // Control request should succeed
-      const version = await dsp.getVersion();
-      expect(version).toBe('control-ok');
-
-      // Spectrum request should timeout and return null
-      const spectrum = await dsp.getSpectrumData();
-      expect(spectrum).toBe(null);
+      // subscribe() catches the timeout and reports it as "not available" rather
+      // than throwing, so callers can treat an old server as "no live analysis".
+      const ok = await dsp.subscribe([{ Spectrum: {} }]);
+      expect(ok).toBe(false);
     });
   });
 
@@ -386,12 +344,9 @@ describe('CamillaDSP Request Safety', () => {
         });
       });
 
-      wsSpectrumServer.on('connection', (ws) => {
-        ws.on('message', () => {});
-      });
 
       dsp = new CamillaDSP({ controlTimeoutMs: 5000 });
-      await dsp.connect('localhost', testPort, testSpectrumPort);
+      await dsp.connect('localhost', testPort);
 
       // Start request via private method
       const promise = (dsp as any).sendDSPMessage('GetVersion');
@@ -422,12 +377,9 @@ describe('CamillaDSP Request Safety', () => {
         });
       });
 
-      wsSpectrumServer.on('connection', (ws) => {
-        ws.on('message', () => {});
-      });
 
       dsp = new CamillaDSP({ controlTimeoutMs: 5000 });
-      await dsp.connect('localhost', testPort, testSpectrumPort);
+      await dsp.connect('localhost', testPort);
 
       // Start multiple requests via private method (second+ will be queued)
       const promise1 = (dsp as any).sendDSPMessage('GetVersion');
@@ -463,12 +415,9 @@ describe('CamillaDSP Request Safety', () => {
         });
       });
 
-      wsSpectrumServer.on('connection', (ws) => {
-        ws.on('message', () => {});
-      });
 
       dsp = new CamillaDSP({ controlTimeoutMs: 200 });
-      await dsp.connect('localhost', testPort, testSpectrumPort);
+      await dsp.connect('localhost', testPort);
 
       // First request times out
       const version = await dsp.getVersion();
@@ -494,20 +443,10 @@ describe('CamillaDSP Request Safety', () => {
         });
       });
 
-      wsSpectrumServer.on('connection', (ws) => {
-        ws.on('message', (data) => {
-          const request = JSON.parse(data.toString());
-          const command = typeof request === 'string' ? request : Object.keys(request)[0];
-          ws.send(JSON.stringify({
-            [command]: { result: 'Ok', value: 'response' },
-          }));
-        });
-      });
-
       // Rapid cycles
       for (let i = 0; i < 5; i++) {
         dsp = new CamillaDSP({ controlTimeoutMs: 1000 });
-        await dsp.connect('localhost', testPort, testSpectrumPort);
+        await dsp.connect('localhost', testPort);
         
         // Maybe start a request
         if (i % 2 === 0) {

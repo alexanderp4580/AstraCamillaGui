@@ -15,10 +15,9 @@ import { smoothDbBins } from '../../../dsp/fractionalOctaveSmoothing';
 import {
   selectPrimarySeries,
   getEffectiveSmoothing,
-  getEffectivePollInterval,
   getEffectiveAnalyzerTau,
 } from '../../../dsp/heatmapSeries';
-import type { CamillaDSP } from '../../../lib/camillaDSP';
+import type { CamillaDSP, SpectrumFrame } from '../../../lib/camillaDSP';
 
 export type SmoothingMode = 'off' | '1/12' | '1/6' | '1/3';
 export type SpectrumMode = 'pre' | 'post';
@@ -85,8 +84,10 @@ export function createSpectrumVizController(config: SpectrumVizControllerConfig)
   const { width, height } = config.getPlotSize();
   renderer.resize(width, height);
   
-  // Polling state
-  let pollingInterval: number | null = null;
+  // Subscription state. Unlike the old poll loop, there's no interval to manage here
+  // — CamillaDSP pushes SpectrumFrame messages on its own cadence once subscribed
+  // (see AnalysisTopic in lib/camillaDSP.ts and ANALYSIS-API-PLAN.md in the DSP repo).
+  let subscribedDsp: CamillaDSP | null = null;
   let lastFrameTime = 0;
   let currentSmoothingMode: SmoothingMode = 'off';
   let currentSpectrumMode: SpectrumMode = 'pre';
@@ -106,76 +107,68 @@ export function createSpectrumVizController(config: SpectrumVizControllerConfig)
   };
   
   /**
-   * Poll spectrum data and render
+   * Handle a pushed SpectrumFrame and render it. Replaces the old `pollSpectrum`:
+   * there's no request to make here, CamillaDSP calls this (via `dsp.onSpectrumFrame`)
+   * whenever it has a new frame, at whatever cadence the server decides.
    */
-  async function pollSpectrum(): Promise<void> {
-    const dsp = config.getDsp();
-    if (!dsp?.isSpectrumSocketOpen()) {
+  function handleSpectrumFrame(frame: SpectrumFrame): void {
+    const spectrumData = parseSpectrumData(frame.binsDb);
+    if (!spectrumData) {
       return;
     }
-    
-    try {
-      const rawData = await dsp.getSpectrumData();
-      const spectrumData = parseSpectrumData(rawData);
-      
-      if (spectrumData) {
-        const nowMs = Date.now();
-        lastFrameTime = nowMs;
-        
-        // Apply fractional-octave smoothing
-        const effectiveSmoothing = getEffectiveSmoothing(
-          currentSmoothingMode,
-          currentHeatmapConfig.highPrecision
-        );
-        const smoothedDb = smoothDbBins(spectrumData.binsDb, effectiveSmoothing);
-        
-        // Update analyzer state
-        analyzer.update(smoothedDb, nowMs);
-        
-        // Get analyzer state
-        const state = analyzer.getState();
-        
-        // Prepare series for rendering
-        const staNorm = state.staDb ? dbArrayToNormalized(state.staDb) : null;
-        const ltaNorm = state.ltaDb ? dbArrayToNormalized(state.ltaDb) : null;
-        const peakNorm = state.peakDb ? dbArrayToNormalized(state.peakDb) : null;
-        
-        // For heatmap: use custom dB range
-        const staHeatNorm = state.staDb
-          ? dbArrayToNormalized(state.staDb, heatmapMinDb, heatmapMaxDb)
-          : null;
-        
-        // Update analyzer layer
-        analyzerLayer.setSeries({
-          liveNorm: null,
-          staNorm,
-          ltaNorm,
-          peakNorm,
-        });
-        
-        // Update heatmap layer
-        const primarySeries = selectPrimarySeries(
-          currentAnalyzerVisibility,
-          { staNorm, ltaNorm, peakNorm }
-        );
-        heatmapLayer.setConfig({
-          primarySeries,
-        });
-        
-        // Render
-        renderer.resetOpacity();
-        renderer.render(staHeatNorm || staNorm || [], {
-          mode: currentSpectrumMode,
-        });
-      }
-    } catch (error) {
-      console.error('Spectrum poll error:', error);
-    }
-    
-    // Check for stale data
+
+    const nowMs = Date.now();
+    lastFrameTime = nowMs;
+
+    // Apply fractional-octave smoothing
+    const effectiveSmoothing = getEffectiveSmoothing(
+      currentSmoothingMode,
+      currentHeatmapConfig.highPrecision
+    );
+    const smoothedDb = smoothDbBins(spectrumData.binsDb, effectiveSmoothing);
+
+    // Update analyzer state
+    analyzer.update(smoothedDb, nowMs);
+
+    // Get analyzer state
+    const state = analyzer.getState();
+
+    // Prepare series for rendering
+    const staNorm = state.staDb ? dbArrayToNormalized(state.staDb) : null;
+    const ltaNorm = state.ltaDb ? dbArrayToNormalized(state.ltaDb) : null;
+    const peakNorm = state.peakDb ? dbArrayToNormalized(state.peakDb) : null;
+
+    // For heatmap: use custom dB range
+    const staHeatNorm = state.staDb
+      ? dbArrayToNormalized(state.staDb, heatmapMinDb, heatmapMaxDb)
+      : null;
+
+    // Update analyzer layer
+    analyzerLayer.setSeries({
+      liveNorm: null,
+      staNorm,
+      ltaNorm,
+      peakNorm,
+    });
+
+    // Update heatmap layer
+    const primarySeries = selectPrimarySeries(
+      currentAnalyzerVisibility,
+      { staNorm, ltaNorm, peakNorm }
+    );
+    heatmapLayer.setConfig({
+      primarySeries,
+    });
+
+    // Render
+    renderer.resetOpacity();
+    renderer.render(staHeatNorm || staNorm || [], {
+      mode: currentSpectrumMode,
+    });
+
     checkStaleData();
   }
-  
+
   /**
    * Check for stale data and fade out if needed
    */
@@ -185,49 +178,50 @@ export function createSpectrumVizController(config: SpectrumVizControllerConfig)
       renderer.fadeOut(0.3);
     }
   }
-  
+
   /**
-   * Start polling
+   * Subscribe to the Spectrum topic on the current DSP connection and start
+   * rendering pushed frames. Safe to call repeatedly (e.g. on every reconnect) —
+   * it always re-fetches `config.getDsp()` and rebinds, rather than assuming the
+   * instance from last time is still the live one.
    */
-  function startPolling(): void {
-    if (pollingInterval !== null) {
-      return; // Already polling
+  function startSubscription(): void {
+    const dsp = config.getDsp();
+    if (!dsp) {
+      return;
     }
-    
-    const pollInterval = getEffectivePollInterval(currentHeatmapConfig.highPrecision);
-    
-    pollingInterval = window.setInterval(() => {
-      pollSpectrum();
-    }, pollInterval);
-    
-    console.log('Spectrum polling started', {
-      pollInterval,
-      highPrecision: currentHeatmapConfig.highPrecision,
-    });
+    subscribedDsp = dsp;
+    dsp.onSpectrumFrame = handleSpectrumFrame;
+    void dsp.subscribe([{ Spectrum: {} }]);
+    console.log('Spectrum subscription started');
   }
-  
+
   /**
-   * Stop polling
+   * Unsubscribe and stop rendering. Tears down against whichever `CamillaDSP`
+   * instance we last subscribed on, since `config.getDsp()` may already be
+   * returning something else (or null) by the time this is called, e.g. after a
+   * disconnect.
    */
-  function stopPolling(): void {
-    if (pollingInterval !== null) {
-      clearInterval(pollingInterval);
-      pollingInterval = null;
+  function stopSubscription(): void {
+    if (subscribedDsp) {
+      subscribedDsp.onSpectrumFrame = undefined;
+      void subscribedDsp.unsubscribe([{ Spectrum: {} }]);
+      subscribedDsp = null;
       renderer.clear();
-      console.log('Spectrum polling stopped');
+      console.log('Spectrum subscription stopped');
     }
   }
   
   // Public API
   return {
     /**
-     * Enable or disable spectrum polling
+     * Enable or disable the spectrum subscription
      */
     setEnabled(enabled: boolean): void {
-      if (enabled && pollingInterval === null) {
-        startPolling();
-      } else if (!enabled && pollingInterval !== null) {
-        stopPolling();
+      if (enabled && subscribedDsp === null) {
+        startSubscription();
+      } else if (!enabled && subscribedDsp !== null) {
+        stopSubscription();
       }
     },
     
@@ -286,7 +280,7 @@ export function createSpectrumVizController(config: SpectrumVizControllerConfig)
       heatmapLayer.setConfig({
         enabled: cfg.enabled,
         maskMode: cfg.maskMode,
-        primarySeries: null, // Updated during polling
+        primarySeries: null, // Updated per pushed frame
         visualTuning: {
           minAlpha: 0.0,
           maxAlpha: cfg.maxAlpha,
@@ -299,40 +293,36 @@ export function createSpectrumVizController(config: SpectrumVizControllerConfig)
           brightOrange: { r: 255, g: 140, b: 40 },
         },
       });
-      
-      // Restart polling if needed to update interval
-      if (pollingInterval !== null) {
-        stopPolling();
-        startPolling();
-      }
+      // `highPrecision` no longer needs a poll-interval restart — frame cadence is
+      // decided by the server now, not a client-side setInterval.
     },
-    
+
     /**
      * Resize the canvas
      */
     resize(width: number, height: number): void {
       renderer.resize(width, height);
     },
-    
+
     /**
      * Reset analyzer averages
      */
     resetAverages(): void {
       analyzer.resetAverages();
     },
-    
+
     /**
-     * Check if currently polling
+     * Check if currently subscribed
      */
-    isPolling(): boolean {
-      return pollingInterval !== null;
+    isSubscribed(): boolean {
+      return subscribedDsp !== null;
     },
-    
+
     /**
      * Cleanup resources
      */
     destroy(): void {
-      stopPolling();
+      stopSubscription();
     },
   };
 }

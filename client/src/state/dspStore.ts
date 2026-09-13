@@ -7,14 +7,17 @@ import { writable, derived, get } from 'svelte/store';
 import { CamillaDSP, type CamillaDSPConfig, type DeviceEntry, type DspEventInfo, type SocketLifecycleEvent } from '../lib/camillaDSP';
 import { debounce } from '../lib/debounce';
 import { getLatestState } from '../lib/api';
-import { parseSpectrumData } from '../dsp/spectrumParser';
 import { initializeFromConfig } from './eqStore';
 
-export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'degraded' | 'error';
+// There's a single DSP connection now (see ANALYSIS-API-PLAN.md in the DSP repo) —
+// spectrum analysis is a subscription on it, not a second transport that can fail
+// independently. The old 'degraded' state ("control OK, spectrum down") no longer
+// has a meaning distinct from 'connected'/'error', so it's gone from this union.
+export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'error';
 
 export interface FailureEntry {
   timestampMs: number;
-  socket: 'control' | 'spectrum';
+  socket: 'control';
   command: string;
   request: string;
   response: any;
@@ -23,7 +26,6 @@ export interface FailureEntry {
 export interface DspState {
   connectionState: ConnectionState;
   controlConnected: boolean;
-  spectrumConnected: boolean;
   lastError?: string;
   config?: CamillaDSPConfig;
   volumeDb?: number;
@@ -35,11 +37,8 @@ export interface DspState {
   };
   currentConfigs?: {
     control: { title?: string; description?: string; yaml?: string };
-    spectrum: { title?: string; description?: string; yaml?: string };
   };
   failures: FailureEntry[];
-  spectrumSupported: boolean | 'unknown'; // Spectrum analyzer capability
-  spectrumBins?: number; // Detected number of spectrum bins
 }
 
 // Internal state
@@ -70,9 +69,7 @@ const debouncedSetVolume = debounce(async (volumeDb: number) => {
 export const dspState = writable<DspState>({
   connectionState: 'disconnected',
   controlConnected: false,
-  spectrumConnected: false,
   failures: [],
-  spectrumSupported: 'unknown',
 });
 
 // Derived stores for convenience
@@ -97,8 +94,7 @@ export function getDspInstance(): CamillaDSP | null {
  */
 export async function connect(
   server: string,
-  controlPort: number,
-  spectrumPort: number
+  controlPort: number
 ): Promise<boolean> {
   // Clear any pending reconnect timer (but don't reset attempt counter)
   clearReconnectTimer();
@@ -120,7 +116,7 @@ export async function connect(
     }
 
     // Attempt connection
-    const connected = await dspInstance.connect(server, controlPort, spectrumPort);
+    const connected = await dspInstance.connect(server, controlPort);
 
     if (connected && dspInstance.config) {
       // Success
@@ -129,28 +125,24 @@ export async function connect(
         ...s,
         connectionState: 'connected',
         controlConnected: dspInstance!.isControlSocketOpen(),
-        spectrumConnected: dspInstance!.isSpectrumSocketOpen(),
         config: dspInstance!.config!,
         lastError: undefined,
       }));
 
       console.log('Global DSP connection established');
-      
+
       // Debug: Log downloaded config shape
       console.log(`Downloaded config: ${Object.keys(dspInstance.config.filters || {}).length} filters`);
-      
+
       // Hook up success/failure callbacks
       dspInstance.onDspSuccess = handleDspSuccess;
       dspInstance.onDspFailure = handleDspFailure;
       dspInstance.onSocketLifecycleEvent = handleSocketLifecycleEvent;
-      
+
       // Fetch initial volume and DSP info
       await refreshVolume();
       await refreshDspInfo();
-      
-      // Check spectrum capability
-      await checkSpectrumCapability();
-      
+
       return true;
     } else {
       // Connection failed
@@ -187,9 +179,7 @@ export function disconnect(): void {
   dspState.set({
     connectionState: 'disconnected',
     controlConnected: false,
-    spectrumConnected: false,
     failures: [],
-    spectrumSupported: 'unknown',
   });
 
   console.log('Global DSP connection closed');
@@ -218,8 +208,7 @@ function resetReconnectState(): void {
  */
 async function attemptReconnect(
   server: string,
-  controlPort: number,
-  spectrumPort: number
+  controlPort: number
 ): Promise<void> {
   // Check if auto-reconnect is enabled
   const autoReconnect = localStorage.getItem('camillaDSP.autoReconnect') === 'true';
@@ -251,11 +240,11 @@ async function attemptReconnect(
     reconnectTimer = null;
 
     // Attempt connection
-    const connected = await connect(server, controlPort, spectrumPort);
+    const connected = await connect(server, controlPort);
 
     // If failed, schedule another retry
     if (!connected) {
-      await attemptReconnect(server, controlPort, spectrumPort);
+      await attemptReconnect(server, controlPort);
     } else {
       // Success - reset attempts
       reconnectAttempts = 0;
@@ -278,19 +267,18 @@ export async function autoConnectFromLocalStorage(): Promise<boolean> {
   // Get stored connection params
   const server = localStorage.getItem('camillaDSP.server');
   const controlPort = localStorage.getItem('camillaDSP.controlPort');
-  const spectrumPort = localStorage.getItem('camillaDSP.spectrumPort');
 
-  if (!server || !controlPort || !spectrumPort) {
+  if (!server || !controlPort) {
     console.log('No stored connection params, skipping auto-connect');
     return false;
   }
 
   console.log('Auto-connecting to stored CamillaDSP instance...');
-  const connected = await connect(server, Number(controlPort), Number(spectrumPort));
+  const connected = await connect(server, Number(controlPort));
 
   // If failed and auto-reconnect is enabled, start retry loop
   if (!connected) {
-    await attemptReconnect(server, Number(controlPort), Number(spectrumPort));
+    await attemptReconnect(server, Number(controlPort));
     return false;
   }
 
@@ -423,16 +411,9 @@ export async function refreshDspInfo(): Promise<void> {
 
     // Get control config info
     const [controlYaml, controlTitle, controlDesc] = await Promise.all([
-      dspInstance.getConfigYaml('control'),
-      dspInstance.getConfigTitle('control'),
-      dspInstance.getConfigDescription('control'),
-    ]);
-
-    // Get spectrum config info
-    const [spectrumYaml, spectrumTitle, spectrumDesc] = await Promise.all([
-      dspInstance.getConfigYaml('spectrum'),
-      dspInstance.getConfigTitle('spectrum'),
-      dspInstance.getConfigDescription('spectrum'),
+      dspInstance.getConfigYaml(),
+      dspInstance.getConfigTitle(),
+      dspInstance.getConfigDescription(),
     ]);
 
     // Update state
@@ -450,11 +431,6 @@ export async function refreshDspInfo(): Promise<void> {
           description: controlDesc || undefined,
           yaml: controlYaml || undefined,
         },
-        spectrum: {
-          title: spectrumTitle || undefined,
-          description: spectrumDesc || undefined,
-          yaml: spectrumYaml || undefined,
-        },
       },
     }));
   } catch (error) {
@@ -463,146 +439,23 @@ export async function refreshDspInfo(): Promise<void> {
 }
 
 /**
- * Check spectrum analyzer capability
- * Detects the number of spectrum bins and verifies the spectrum pipeline is operational
- */
-async function checkSpectrumCapability(): Promise<void> {
-  if (!dspInstance || !dspInstance.isSpectrumSocketOpen()) {
-    dspState.update((s) => ({ ...s, spectrumSupported: false, spectrumBins: undefined }));
-    return;
-  }
-
-  try {
-    // Attempt to get spectrum data
-    const rawData = await dspInstance.getSpectrumData();
-    
-    if (!rawData) {
-      // No spectrum data available
-      console.error('Spectrum analyzer not available: no data returned');
-      dspState.update((s) => ({ ...s, spectrumSupported: false, spectrumBins: undefined }));
-      
-      // Add diagnostic failure entry
-      const failure: FailureEntry = {
-        timestampMs: Date.now(),
-        socket: 'spectrum',
-        command: 'GetPlaybackSignalPeak',
-        request: 'Spectrum capability check',
-        response: 'No data returned (likely spectrum pipeline not configured)',
-      };
-      handleDspFailure({
-        timestampMs: failure.timestampMs,
-        socket: failure.socket,
-        command: failure.command,
-        request: failure.request,
-        response: failure.response,
-      });
-      
-      return;
-    }
-
-    // Handle empty arrays (can happen with certain CamillaDSP commands)
-    if (Array.isArray(rawData) && rawData.length === 0) {
-      console.warn('Spectrum analyzer: received empty array, keeping status as unknown');
-      // Keep spectrumSupported as-is (likely 'unknown'), don't mark as false
-      return;
-    }
-
-    // Parse spectrum data
-    const parsed = parseSpectrumData(rawData);
-    
-    if (!parsed) {
-      console.error('Spectrum analyzer not available: failed to parse data');
-      dspState.update((s) => ({ ...s, spectrumSupported: false, spectrumBins: undefined }));
-      
-      const failure: FailureEntry = {
-        timestampMs: Date.now(),
-        socket: 'spectrum',
-        command: 'GetPlaybackSignalPeak',
-        request: 'Spectrum capability check',
-        response: 'Failed to parse spectrum data format',
-      };
-      handleDspFailure({
-        timestampMs: failure.timestampMs,
-        socket: failure.socket,
-        command: failure.command,
-        request: failure.request,
-        response: failure.response,
-      });
-      
-      return;
-    }
-
-    // Accept any bin count >= 3 (validated by parser)
-    const actualBins = parsed.binsDb.length;
-
-    // Success - spectrum is properly configured
-    console.log(`Spectrum analyzer detected: ${actualBins} bins`);
-    dspState.update((s) => ({ 
-      ...s, 
-      spectrumSupported: true,
-      spectrumBins: actualBins,
-    }));
-    
-  } catch (error) {
-    console.error('Error checking spectrum capability:', error);
-    dspState.update((s) => ({ ...s, spectrumSupported: false, spectrumBins: undefined }));
-    
-    const failure: FailureEntry = {
-      timestampMs: Date.now(),
-      socket: 'spectrum',
-      command: 'GetPlaybackSignalPeak',
-      request: 'Spectrum capability check',
-      response: error instanceof Error ? error.message : 'Unknown error',
-    };
-    handleDspFailure({
-      timestampMs: failure.timestampMs,
-      socket: failure.socket,
-      command: failure.command,
-      request: failure.request,
-      response: failure.response,
-    });
-  }
-}
-
-/**
  * Handle socket lifecycle events (open/close/error)
- * Event-driven health monitoring for degraded state detection
+ * Event-driven connection health monitoring and reconnect triggering
  */
 function handleSocketLifecycleEvent(event: SocketLifecycleEvent): void {
   const { socket, type, message } = event;
-  
+
   console.log(`[Lifecycle] ${socket} socket: ${type}`, message || '');
-  
-  // Update per-socket state and derive overall connection state
+
   dspState.update((s) => {
-    // Update socket-specific connection flags
-    const controlConnected = socket === 'control' 
-      ? (type === 'open')
-      : s.controlConnected;
-    
-    const spectrumConnected = socket === 'spectrum'
-      ? (type === 'open')
-      : s.spectrumConnected;
-    
-    // Derive overall connection state from per-socket states
-    let connectionState: ConnectionState;
-    if (!controlConnected) {
-      connectionState = 'error';
-    } else if (!spectrumConnected) {
-      connectionState = 'degraded';
-    } else {
-      // Both sockets connected → always 'connected'
-      connectionState = 'connected';
-    }
-    
+    const controlConnected = type === 'open';
     return {
       ...s,
       controlConnected,
-      spectrumConnected,
-      connectionState,
+      connectionState: controlConnected ? 'connected' : 'error',
     };
   });
-  
+
   // Log close/error events as failure entries for diagnostics
   if (type === 'close' || type === 'error') {
     handleDspFailure({
@@ -613,24 +466,17 @@ function handleSocketLifecycleEvent(event: SocketLifecycleEvent): void {
       response: message || `Socket ${type}`,
     });
   }
-  
-  // Trigger reconnection on control socket failure
-  if (socket === 'control' && (type === 'close' || type === 'error')) {
+
+  // Trigger reconnection on socket failure
+  if (type === 'close' || type === 'error') {
     console.warn('Control socket disconnected, triggering reconnect...');
     const server = localStorage.getItem('camillaDSP.server');
     const controlPort = localStorage.getItem('camillaDSP.controlPort');
-    const spectrumPort = localStorage.getItem('camillaDSP.spectrumPort');
-    
-    if (server && controlPort && spectrumPort) {
-      attemptReconnect(server, Number(controlPort), Number(spectrumPort));
+
+    if (server && controlPort) {
+      attemptReconnect(server, Number(controlPort));
     }
   }
-  
-  // TODO: Implement spectrum-only reconnect for degraded state recovery
-  // if (socket === 'spectrum' && (type === 'close' || type === 'error')) {
-  //   console.warn('Spectrum socket disconnected, attempting spectrum-only reconnect...');
-  //   // reconnectSpectrum();
-  // }
 }
 
 /**
@@ -676,7 +522,6 @@ export interface DiagnosticsExport {
   connectionState: ConnectionState;
   server?: string;
   controlPort?: number;
-  spectrumPort?: number;
   version?: string;
   lastError?: string;
   failureCount: number;
@@ -690,18 +535,16 @@ export interface DiagnosticsExport {
 
 export function exportDiagnostics(): DiagnosticsExport {
   const state = get(dspState);
-  
+
   // Get connection params from localStorage
   const server = localStorage.getItem('camillaDSP.server') || undefined;
   const controlPortStr = localStorage.getItem('camillaDSP.controlPort');
-  const spectrumPortStr = localStorage.getItem('camillaDSP.spectrumPort');
-  
+
   const diagnostics: DiagnosticsExport = {
     timestamp: new Date().toISOString(),
     connectionState: state.connectionState,
     server,
     controlPort: controlPortStr ? Number(controlPortStr) : undefined,
-    spectrumPort: spectrumPortStr ? Number(spectrumPortStr) : undefined,
     version: state.version,
     lastError: state.lastError,
     failureCount: state.failures.length,

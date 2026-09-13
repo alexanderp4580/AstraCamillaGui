@@ -52,7 +52,7 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
 
   // Reactive pipeline blocks (with stable IDs)
   $: blocks = $dspConfig ? buildPipelineViewModel($dspConfig, getBlockId) : [];
-  $: isConnected = $connectionState === 'connected' || $connectionState === 'degraded';
+  $: isConnected = $connectionState === 'connected';
 
   // Selection state
   type Selection = { kind: 'block'; blockId: string } | null;

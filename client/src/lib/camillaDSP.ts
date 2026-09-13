@@ -22,7 +22,6 @@ export type {
 
 export interface CamillaDSPOptions {
   controlTimeoutMs?: number;
-  spectrumTimeoutMs?: number;
 }
 
 // GUI-ready config type (normalized: required blocks always present)
@@ -50,14 +49,14 @@ interface DSPResponse {
 
 export interface DspEventInfo {
   timestampMs: number;
-  socket: 'control' | 'spectrum';
+  socket: 'control';
   command: string;
   request: string;
   response: any;
 }
 
 export interface SocketLifecycleEvent {
-  socket: 'control' | 'spectrum';
+  socket: 'control';
   type: 'open' | 'close' | 'error';
   message?: string;
   timestampMs: number;
@@ -66,17 +65,34 @@ export interface SocketLifecycleEvent {
 export type DeviceEntry = [string, string | null];
 
 /**
+ * A topic subscribable via `subscribe()`/`unsubscribe()` for pushed analysis
+ * frames instead of polling. Mirrors CamillaDSP's `AnalysisTopic` (see
+ * AstraCamillaDsp's `socketserver.rs` and `ANALYSIS-API-PLAN.md`).
+ */
+export type AnalysisTopic =
+  | { Spectrum: { num_bins?: number; fmin?: number; fmax?: number } }
+  | 'Energy';
+
+export interface SpectrumFrame {
+  seq: number;
+  binsDb: number[];
+}
+
+export interface EnergyFrame {
+  seq: number;
+  rmsDb: number[];
+  peakDb: number[];
+}
+
+/**
  * CamillaDSP client class
  */
 export class CamillaDSP {
   private ws: WebSocket | null = null;
-  private wsSpectrum: WebSocket | null = null;
   private server: string = '';
   private port: number = 0;
-  private spectrumPort: number = 0;
-  
+
   public connected: boolean = false;
-  public spectrumConnected: boolean = false;
   public config: GuiReadyCamillaDSPConfig | null = null;
 
   /**
@@ -86,23 +102,23 @@ export class CamillaDSP {
     return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
   }
 
-  /**
-   * Check if spectrum socket is open and ready
-   */
-  public isSpectrumSocketOpen(): boolean {
-    return this.wsSpectrum !== null && this.wsSpectrum.readyState === WebSocket.OPEN;
-  }
-
   // Event callbacks for failure tracking
   public onDspSuccess?: (info: DspEventInfo) => void;
   public onDspFailure?: (info: DspEventInfo) => void;
-  
+
   // Lifecycle event callback
   public onSocketLifecycleEvent?: (event: SocketLifecycleEvent) => void;
 
-  // Request queues for serialization
+  // Pushed analysis frames (see `subscribe()`/`unsubscribe()`). Unlike every other
+  // message, these arrive unsolicited rather than in response to a request, so they
+  // can't go through the request/response queue below — a persistent listener set
+  // up in `connect()` routes them here instead. Harmless no-op if nothing is
+  // subscribed: the server never sends a topic nobody asked for.
+  public onSpectrumFrame?: (frame: SpectrumFrame) => void;
+  public onEnergyFrame?: (frame: EnergyFrame) => void;
+
+  // Request queue for serialization
   private controlQueue: SocketRequestQueue = new SocketRequestQueue();
-  private spectrumQueue: SocketRequestQueue = new SocketRequestQueue();
 
   // Timeout configuration
   private options: CamillaDSPOptions;
@@ -110,7 +126,6 @@ export class CamillaDSP {
   constructor(options: CamillaDSPOptions = {}) {
     this.options = {
       controlTimeoutMs: options.controlTimeoutMs ?? 5000,
-      spectrumTimeoutMs: options.spectrumTimeoutMs ?? 2000,
     };
   }
 
@@ -167,15 +182,14 @@ export class CamillaDSP {
   /**
    * Connect to CamillaDSP backend
    */
-  async connect(server?: string, port?: number, spectrumPort?: number): Promise<boolean> {
+  async connect(server?: string, port?: number): Promise<boolean> {
     // Use provided params or try localStorage
     this.server = server || localStorage.getItem('camillaDSP.server') || '';
     // Support both 'controlPort' (new) and 'port' (legacy) keys
-    this.port = port || 
-                Number(localStorage.getItem('camillaDSP.controlPort')) || 
-                Number(localStorage.getItem('camillaDSP.port')) || 
+    this.port = port ||
+                Number(localStorage.getItem('camillaDSP.controlPort')) ||
+                Number(localStorage.getItem('camillaDSP.port')) ||
                 0;
-    this.spectrumPort = spectrumPort || Number(localStorage.getItem('camillaDSP.spectrumPort')) || 0;
 
     if (!this.server) {
       console.error('No server specified');
@@ -186,9 +200,10 @@ export class CamillaDSP {
       // Connect to control socket
       this.ws = await this.connectToDSP(this.server, this.port);
       this.connected = true;
-      this.attachSocketLifecycleListeners(this.ws, false);
+      this.attachSocketLifecycleListeners(this.ws);
+      this.attachAnalysisFrameListener(this.ws);
       console.log('Connected to DSP control socket');
-      
+
       // Emit open event for control socket
       if (this.onSocketLifecycleEvent) {
         this.onSocketLifecycleEvent({
@@ -197,27 +212,6 @@ export class CamillaDSP {
           message: 'Control socket connected',
           timestampMs: Date.now(),
         });
-      }
-
-      // Connect to spectrum socket
-      try {
-        this.wsSpectrum = await this.connectToDSP(this.server, this.spectrumPort);
-        this.spectrumConnected = true;
-        this.attachSocketLifecycleListeners(this.wsSpectrum, true);
-        console.log('Connected to DSP spectrum socket');
-        
-        // Emit open event for spectrum socket
-        if (this.onSocketLifecycleEvent) {
-          this.onSocketLifecycleEvent({
-            socket: 'spectrum',
-            type: 'open',
-            message: 'Spectrum socket connected',
-            timestampMs: Date.now(),
-          });
-        }
-      } catch (error) {
-        console.error('Failed to connect to spectrum socket:', error);
-        this.spectrumConnected = false;
       }
 
       // Initialize after connection
@@ -230,7 +224,6 @@ export class CamillaDSP {
       // Save to localStorage (use 'controlPort' as primary key)
       localStorage.setItem('camillaDSP.server', this.server);
       localStorage.setItem('camillaDSP.controlPort', String(this.port));
-      localStorage.setItem('camillaDSP.spectrumPort', String(this.spectrumPort));
 
       return true;
     } catch (error) {
@@ -300,22 +293,14 @@ export class CamillaDSP {
    * Attach lifecycle listeners to keep connection flags synchronized
    * and emit lifecycle events
    */
-  private attachSocketLifecycleListeners(ws: WebSocket, isSpectrum: boolean): void {
-    const socketLabel: 'control' | 'spectrum' = isSpectrum ? 'spectrum' : 'control';
-    
+  private attachSocketLifecycleListeners(ws: WebSocket): void {
     const handleClose = (event: CloseEvent) => {
-      if (isSpectrum) {
-        this.spectrumConnected = false;
-        console.log('Spectrum socket closed');
-      } else {
-        this.connected = false;
-        console.log('Control socket closed');
-      }
-      
-      // Emit lifecycle event
+      this.connected = false;
+      console.log('Control socket closed');
+
       if (this.onSocketLifecycleEvent) {
         this.onSocketLifecycleEvent({
-          socket: socketLabel,
+          socket: 'control',
           type: 'close',
           message: `WebSocket closed (code: ${event.code}, reason: ${event.reason || 'none'})`,
           timestampMs: Date.now(),
@@ -323,17 +308,12 @@ export class CamillaDSP {
       }
     };
 
-    const handleError = (event: Event) => {
-      if (isSpectrum) {
-        this.spectrumConnected = false;
-      } else {
-        this.connected = false;
-      }
-      
-      // Emit lifecycle event
+    const handleError = (_event: Event) => {
+      this.connected = false;
+
       if (this.onSocketLifecycleEvent) {
         this.onSocketLifecycleEvent({
-          socket: socketLabel,
+          socket: 'control',
           type: 'error',
           message: 'WebSocket error',
           timestampMs: Date.now(),
@@ -343,6 +323,37 @@ export class CamillaDSP {
 
     ws.addEventListener('close', handleClose);
     ws.addEventListener('error', handleError);
+  }
+
+  /**
+   * Route pushed `SpectrumFrame`/`EnergyFrame` messages to their callbacks. This is a
+   * *permanent* listener, unlike the one-shot listeners `sendOnce` adds per request:
+   * pushed frames arrive whenever the server feels like it, not in reply to anything
+   * we sent, so nothing else would ever see them. It coexists peacefully with those
+   * per-request listeners — each just ignores messages whose top-level key it doesn't
+   * recognize.
+   */
+  private attachAnalysisFrameListener(ws: WebSocket): void {
+    ws.addEventListener('message', (event: MessageEvent) => {
+      let msg: any;
+      try {
+        msg = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+      if (msg.SpectrumFrame && this.onSpectrumFrame) {
+        this.onSpectrumFrame({
+          seq: msg.SpectrumFrame.seq,
+          binsDb: msg.SpectrumFrame.bins_db,
+        });
+      } else if (msg.EnergyFrame && this.onEnergyFrame) {
+        this.onEnergyFrame({
+          seq: msg.EnergyFrame.seq,
+          rmsDb: msg.EnergyFrame.rms_db,
+          peakDb: msg.EnergyFrame.peak_db,
+        });
+      }
+    });
   }
 
   /**
@@ -385,7 +396,7 @@ export class CamillaDSP {
    */
   private fireEventCallback(
     success: boolean,
-    socket: 'control' | 'spectrum',
+    socket: 'control',
     command: string,
     request: string,
     response: any
@@ -416,22 +427,12 @@ export class CamillaDSP {
   }
 
   /**
-   * Send message to spectrum socket with queueing and timeout
-   * @private
-   */
-  private sendSpectrumMessage(message: string | Record<string, any>): Promise<any> {
-    return this.spectrumQueue.enqueue(async (signal) => {
-      return this.sendOnce(this.wsSpectrum!, 'spectrum', message, this.options.spectrumTimeoutMs!, signal);
-    });
-  }
-
-  /**
    * Send a single message and wait for response with timeout and cancellation support
    * @private
    */
   private sendOnce(
     ws: WebSocket,
-    socketLabel: 'control' | 'spectrum',
+    socketLabel: 'control',
     message: string | Record<string, any>,
     timeoutMs: number,
     signal: AbortSignal
@@ -711,21 +712,34 @@ export class CamillaDSP {
   }
 
   /**
-   * Get spectrum data
-   * Returns null silently if spectrum socket not ready (expected during connection/reconnection)
+   * Subscribe to one or more analysis topics (see `AnalysisTopic`). The server pushes
+   * `SpectrumFrame`/`EnergyFrame` messages from then on — set `onSpectrumFrame`/
+   * `onEnergyFrame` before calling this, not after, so the first frames aren't missed.
+   * Returns false (rather than throwing) if the DSP doesn't understand `Subscribe` at
+   * all — an older, unpatched CamillaDSP — so callers can treat that as "no live
+   * analysis available" instead of a hard error.
    */
-  async getSpectrumData(): Promise<any> {
-    // Early return if spectrum socket not open (avoid noisy errors during transient states)
-    if (!this.isSpectrumSocketOpen()) {
-      return null;
-    }
-
+  async subscribe(topics: AnalysisTopic[]): Promise<boolean> {
     try {
-      return await this.sendSpectrumMessage('GetPlaybackSignalPeak');
+      await this.sendDSPMessage({ Subscribe: topics });
+      return true;
     } catch (error) {
-      // Use console.warn for spectrum errors (non-fatal, expected during degraded states)
-      console.warn('Spectrum data unavailable:', error instanceof Error ? error.message : error);
-      return null;
+      console.warn('Subscribe unavailable:', error instanceof Error ? error.message : error);
+      return false;
+    }
+  }
+
+  /**
+   * Unsubscribe from one or more analysis topics. Safe to call even if never
+   * subscribed, or if the connection is already gone.
+   */
+  async unsubscribe(topics: AnalysisTopic[]): Promise<boolean> {
+    try {
+      await this.sendDSPMessage({ Unsubscribe: topics });
+      return true;
+    } catch (error) {
+      console.warn('Unsubscribe failed:', error instanceof Error ? error.message : error);
+      return false;
     }
   }
 
@@ -766,46 +780,37 @@ export class CamillaDSP {
   }
 
   /**
-   * Get config as YAML from specified socket
+   * Get config as YAML
    */
-  async getConfigYaml(socket: 'control' | 'spectrum' = 'control'): Promise<string | null> {
+  async getConfigYaml(): Promise<string | null> {
     try {
-      if (socket === 'spectrum') {
-        return await this.sendSpectrumMessage('GetConfig');
-      }
       return await this.sendDSPMessage('GetConfig');
     } catch (error) {
-      console.error(`Error getting config YAML from ${socket}:`, error);
+      console.error('Error getting config YAML:', error);
       return null;
     }
   }
 
   /**
-   * Get config title from specified socket
+   * Get config title
    */
-  async getConfigTitle(socket: 'control' | 'spectrum' = 'control'): Promise<string | null> {
+  async getConfigTitle(): Promise<string | null> {
     try {
-      if (socket === 'spectrum') {
-        return await this.sendSpectrumMessage('GetConfigTitle');
-      }
       return await this.sendDSPMessage('GetConfigTitle');
     } catch (error) {
-      console.error(`Error getting config title from ${socket}:`, error);
+      console.error('Error getting config title:', error);
       return null;
     }
   }
 
   /**
-   * Get config description from specified socket
+   * Get config description
    */
-  async getConfigDescription(socket: 'control' | 'spectrum' = 'control'): Promise<string | null> {
+  async getConfigDescription(): Promise<string | null> {
     try {
-      if (socket === 'spectrum') {
-        return await this.sendSpectrumMessage('GetConfigDescription');
-      }
       return await this.sendDSPMessage('GetConfigDescription');
     } catch (error) {
-      console.error(`Error getting config description from ${socket}:`, error);
+      console.error('Error getting config description:', error);
       return null;
     }
   }
@@ -816,17 +821,11 @@ export class CamillaDSP {
   disconnect(): void {
     // Cancel all pending and in-flight requests
     this.controlQueue.cancelAll(new Error('Disconnected'));
-    this.spectrumQueue.cancelAll(new Error('Disconnected'));
 
     if (this.ws) {
       this.ws.close();
       this.ws = null;
     }
-    if (this.wsSpectrum) {
-      this.wsSpectrum.close();
-      this.wsSpectrum = null;
-    }
     this.connected = false;
-    this.spectrumConnected = false;
   }
 }

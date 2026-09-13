@@ -1,42 +1,37 @@
 /**
- * Spectrum socket readiness tests
- * Verifies that getSpectrumData() handles "not ready yet" gracefully
+ * Analysis subscription readiness tests
+ * Verifies that subscribe()/unsubscribe() handle "not connected yet" gracefully,
+ * now that spectrum data comes from a Subscribe on the single control socket
+ * rather than a dedicated second socket.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { CamillaDSP } from '../camillaDSP';
 
-describe('CamillaDSP spectrum socket readiness', () => {
+describe('CamillaDSP analysis subscription readiness', () => {
   let dsp: CamillaDSP;
-  let consoleErrorSpy: any;
+  let consoleWarnSpy: any;
 
   beforeEach(() => {
     dsp = new CamillaDSP();
-    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
   });
 
   afterEach(() => {
-    consoleErrorSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
   });
 
-  it('should return null silently when spectrum socket is not open', async () => {
-    // Simulate spectrum socket not connected yet
-    // (default state: wsSpectrum = null, spectrumConnected = false)
-    
-    const result = await dsp.getSpectrumData();
-    
-    // Should return null without error
-    expect(result).toBeNull();
-    
-    // Should NOT have called console.error
-    expect(consoleErrorSpy).not.toHaveBeenCalled();
+  it('should return false, not throw, when subscribing before connecting', async () => {
+    // No control socket exists yet — sendDSPMessage rejects immediately,
+    // subscribe() catches that and reports "not available" instead of throwing.
+    const ok = await dsp.subscribe([{ Spectrum: {} }]);
+
+    expect(ok).toBe(false);
   });
 
-  it('should check spectrum socket readiness helper', () => {
-    // Initially not open
-    expect(dsp.isSpectrumSocketOpen()).toBe(false);
-    
-    // After successful connection (tested in integration tests)
-    // this should return true
+  it('should return false, not throw, when unsubscribing before connecting', async () => {
+    const ok = await dsp.unsubscribe([{ Spectrum: {} }]);
+
+    expect(ok).toBe(false);
   });
 
   it('should check control socket readiness helper', () => {

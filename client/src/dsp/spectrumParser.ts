@@ -8,19 +8,17 @@ export interface SpectrumData {
 }
 
 /**
- * Parse spectrum data from WebSocket response
- * Expects CamillaDSP spectrum in dBFS (negative values, 0 dB max)
- * 
- * For our spectrum pipeline, GetPlaybackSignalPeak returns one value per channel.
- * Since playback channels ARE the spectrum bins, we accept the array as-is.
+ * Validate a pushed `SpectrumFrame.binsDb` array before handing it to the renderer.
+ * Expects CamillaDSP spectrum in dBFS (negative values, 0 dB max).
  */
 export function parseSpectrumData(value: unknown): SpectrumData | null {
   if (!Array.isArray(value)) {
     return null;
   }
 
-  // Require at least 3 values (reject legacy 2-channel format)
-  if (value.length < 3) {
+  // The server enforces num_bins >= 2 (see SpectrumStatus in the DSP fork); anything
+  // below that isn't a real spectrum frame.
+  if (value.length < 2) {
     return null;
   }
 

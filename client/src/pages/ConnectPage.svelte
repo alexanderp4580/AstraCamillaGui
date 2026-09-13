@@ -11,7 +11,6 @@
     dspConfigs, 
     dspFailures,
     dspConfig,
-    dspState,
     exportDiagnostics,
     refreshDspInfo
   } from '../state/dspStore';
@@ -32,32 +31,24 @@
       ? storedServer
       : pageHost || 'localhost';
   let controlPort = localStorage.getItem('camillaDSP.controlPort') || '1234';
-  let spectrumPort = localStorage.getItem('camillaDSP.spectrumPort') || '1235';
   let autoReconnect = localStorage.getItem('camillaDSP.autoReconnect') === 'true';
   let isConnecting = false;
   let copyFeedback = '';
-  
+
   // Load defaults from server settings if not in localStorage
   onMount(async () => {
     const hasStoredSettings = localStorage.getItem('camillaDSP.server') ||
-                               localStorage.getItem('camillaDSP.controlPort') ||
-                               localStorage.getItem('camillaDSP.spectrumPort');
-    
+                               localStorage.getItem('camillaDSP.controlPort');
+
     if (!hasStoredSettings) {
       try {
         const settings = await getSettings();
-        
+
         // Parse control WS URL
         if (settings.camillaControlWsUrl) {
           const controlUrl = new URL(settings.camillaControlWsUrl);
           server = controlUrl.hostname;
           controlPort = controlUrl.port || '1234';
-        }
-        
-        // Parse spectrum WS URL (only need port, server should be same)
-        if (settings.camillaSpectrumWsUrl) {
-          const spectrumUrl = new URL(settings.camillaSpectrumWsUrl);
-          spectrumPort = spectrumUrl.port || '1235';
         }
       } catch (error) {
         // Ignore settings fetch errors, use hardcoded defaults
@@ -65,11 +56,10 @@
       }
     }
   });
-  
+
   // State for refresh and copy functionality
   let refreshingConfigs = false;
   let copyFeedbackControl = '';
-  let copyFeedbackSpectrum = '';
 
   // Copy diagnostics to clipboard
   async function handleCopyDiagnostics() {
@@ -116,37 +106,21 @@
   }
 
   // Copy YAML to clipboard
-  async function copyYaml(yaml: string | undefined, which: 'control' | 'spectrum') {
+  async function copyYaml(yaml: string | undefined) {
     if (!yaml) return;
-    
+
     try {
       await navigator.clipboard.writeText(yaml);
-      
-      if (which === 'control') {
-        copyFeedbackControl = 'Copied!';
-        setTimeout(() => {
-          copyFeedbackControl = '';
-        }, 2000);
-      } else {
-        copyFeedbackSpectrum = 'Copied!';
-        setTimeout(() => {
-          copyFeedbackSpectrum = '';
-        }, 2000);
-      }
+      copyFeedbackControl = 'Copied!';
+      setTimeout(() => {
+        copyFeedbackControl = '';
+      }, 2000);
     } catch (error) {
       console.error('Failed to copy YAML:', error);
-      
-      if (which === 'control') {
-        copyFeedbackControl = 'Failed';
-        setTimeout(() => {
-          copyFeedbackControl = '';
-        }, 2000);
-      } else {
-        copyFeedbackSpectrum = 'Failed';
-        setTimeout(() => {
-          copyFeedbackSpectrum = '';
-        }, 2000);
-      }
+      copyFeedbackControl = 'Failed';
+      setTimeout(() => {
+        copyFeedbackControl = '';
+      }, 2000);
     }
   }
 
@@ -159,12 +133,11 @@
     // Save to localStorage
     localStorage.setItem('camillaDSP.server', server);
     localStorage.setItem('camillaDSP.controlPort', controlPort);
-    localStorage.setItem('camillaDSP.spectrumPort', spectrumPort);
 
     // Attempt connection
     isConnecting = true;
     try {
-      await connect(server, Number(controlPort), Number(spectrumPort));
+      await connect(server, Number(controlPort));
     } finally {
       isConnecting = false;
     }
@@ -183,8 +156,6 @@
     switch ($connectionState) {
       case 'connected':
         return { text: 'Connected', color: 'green', icon: '✓' };
-      case 'degraded':
-        return { text: 'Degraded (Spectrum Unavailable)', color: 'yellow', icon: '⚠' };
       case 'connecting':
         return { text: 'Connecting...', color: 'blue', icon: '◌' };
       case 'error':
@@ -195,7 +166,7 @@
     }
   })();
 
-  $: isConnected = $connectionState === 'connected' || $connectionState === 'degraded';
+  $: isConnected = $connectionState === 'connected';
 </script>
 
 <div class="connect-page">
@@ -211,16 +182,11 @@
       <div class="status-text">{statusDisplay.text}</div>
       {#if $connectionState === 'connected'}
         <div class="status-subtext">
-          ws://{server}:{controlPort} (control) + :{spectrumPort} (spectrum)
+          ws://{server}:{controlPort}
         </div>
         {#if $dspVersion}
           <div class="status-subtext">
             CamillaDSP v{$dspVersion}
-          </div>
-        {/if}
-        {#if $dspState.spectrumBins}
-          <div class="status-subtext">
-            Spectrum: {$dspState.spectrumBins} bins
           </div>
         {/if}
       {/if}
@@ -251,17 +217,6 @@
         type="number"
         bind:value={controlPort}
         placeholder="1234"
-        required
-      />
-    </div>
-
-    <div class="form-group">
-      <label for="spectrum-port">Spectrum Port</label>
-      <input
-        id="spectrum-port"
-        type="number"
-        bind:value={spectrumPort}
-        placeholder="1235"
         required
       />
     </div>
@@ -380,7 +335,7 @@
               <pre class="config-yaml">{$dspConfigs.control.yaml}</pre>
               <button 
                 class="btn-copy-yaml" 
-                on:click={() => copyYaml($dspConfigs.control.yaml, 'control')}
+                on:click={() => copyYaml($dspConfigs.control.yaml)}
                 title="Copy YAML to clipboard"
                 aria-label="Copy YAML to clipboard"
               >
@@ -396,48 +351,6 @@
                 </svg>
                 {#if copyFeedbackControl}
                   <span class="copy-feedback-badge">{copyFeedbackControl}</span>
-                {/if}
-              </button>
-            </div>
-          {:else}
-            <p class="empty-message">No configuration available</p>
-          {/if}
-        </div>
-
-        <!-- Spectrum Port Config -->
-        <div class="config-panel">
-          <h3>Spectrum Port</h3>
-          {#if $dspConfigs.spectrum.title}
-            <div class="config-meta">
-              <strong>Title:</strong> {$dspConfigs.spectrum.title}
-            </div>
-          {/if}
-          {#if $dspConfigs.spectrum.description}
-            <div class="config-meta">
-              <strong>Description:</strong> {$dspConfigs.spectrum.description}
-            </div>
-          {/if}
-          {#if $dspConfigs.spectrum.yaml}
-            <div class="yaml-container">
-              <pre class="config-yaml">{$dspConfigs.spectrum.yaml}</pre>
-              <button 
-                class="btn-copy-yaml" 
-                on:click={() => copyYaml($dspConfigs.spectrum.yaml, 'spectrum')}
-                title="Copy YAML to clipboard"
-                aria-label="Copy YAML to clipboard"
-              >
-                <svg width="32" height="32" viewBox="0 0 55.832 55.832" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M9.166,41.832H6.669C2.991,41.832,0,38.84,0,35.163V11.835c0-3.678,2.992-6.669,6.669-6.669h34.328
-                    c3.678,0,6.669,2.992,6.669,6.669v3.164c0,0.552-0.448,1-1,1H14.835c-2.575,0-4.669,2.095-4.669,4.669v20.164
-                    C10.166,41.385,9.718,41.832,9.166,41.832z M6.669,7.166C4.094,7.166,2,9.261,2,11.835v23.328c0,2.575,2.095,4.669,4.669,4.669
-                    h1.497V20.669c0-3.678,2.992-6.669,6.669-6.669h30.831v-2.164c0-2.575-2.096-4.669-4.669-4.669H6.669V7.166z"/>
-                  <path d="M49.163,50.666H14.835c-3.678,0-6.669-2.992-6.669-6.669V20.669c0-3.678,2.992-6.669,6.669-6.669h34.328
-                    c3.678,0,6.669,2.992,6.669,6.669v23.328C55.832,47.674,52.84,50.666,49.163,50.666z M14.835,15.999
-                    c-2.575,0-4.669,2.095-4.669,4.669v23.328c0,2.575,2.095,4.669,4.669,4.669h34.328c2.575,0,4.669-2.095,4.669-4.669V20.669
-                    c0-2.575-2.096-4.669-4.669-4.669L14.835,15.999L14.835,15.999z"/>
-                </svg>
-                {#if copyFeedbackSpectrum}
-                  <span class="copy-feedback-badge">{copyFeedbackSpectrum}</span>
                 {/if}
               </button>
             </div>
@@ -833,7 +746,7 @@
   /* Config Panels */
   .config-panels {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr;
     gap: 2rem;
   }
 

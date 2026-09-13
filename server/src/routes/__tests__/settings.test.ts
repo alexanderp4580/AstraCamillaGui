@@ -22,9 +22,8 @@ describe('Settings endpoint', () => {
     process.env = { ...originalEnv };
   });
 
-  it('should return null for both URLs when env vars are not set', async () => {
+  it('should return null for control URL when env var is not set', async () => {
     delete process.env.CAMILLA_CONTROL_WS_URL;
-    delete process.env.CAMILLA_SPECTRUM_WS_URL;
 
     const response = await app.inject({
       method: 'GET',
@@ -35,13 +34,11 @@ describe('Settings endpoint', () => {
     const body = JSON.parse(response.body);
     expect(body).toEqual({
       camillaControlWsUrl: null,
-      camillaSpectrumWsUrl: null,
     });
   });
 
-  it('should return valid WS URLs when env vars are set', async () => {
+  it('should return valid WS URL when env var is set', async () => {
     process.env.CAMILLA_CONTROL_WS_URL = 'ws://localhost:3146';
-    process.env.CAMILLA_SPECTRUM_WS_URL = 'ws://localhost:6413';
 
     const response = await app.inject({
       method: 'GET',
@@ -52,13 +49,11 @@ describe('Settings endpoint', () => {
     const body = JSON.parse(response.body);
     expect(body).toEqual({
       camillaControlWsUrl: 'ws://localhost:3146',
-      camillaSpectrumWsUrl: 'ws://localhost:6413',
     });
   });
 
-  it('should return null for invalid URLs (missing protocol)', async () => {
+  it('should return null for invalid URL (missing protocol)', async () => {
     process.env.CAMILLA_CONTROL_WS_URL = 'localhost:3146';
-    process.env.CAMILLA_SPECTRUM_WS_URL = 'localhost:6413';
 
     const response = await app.inject({
       method: 'GET',
@@ -69,13 +64,11 @@ describe('Settings endpoint', () => {
     const body = JSON.parse(response.body);
     expect(body).toEqual({
       camillaControlWsUrl: null,
-      camillaSpectrumWsUrl: null,
     });
   });
 
   it('should accept wss:// protocol', async () => {
     process.env.CAMILLA_CONTROL_WS_URL = 'wss://secure.example.com:3146';
-    process.env.CAMILLA_SPECTRUM_WS_URL = 'wss://secure.example.com:6413';
 
     const response = await app.inject({
       method: 'GET',
@@ -86,13 +79,11 @@ describe('Settings endpoint', () => {
     const body = JSON.parse(response.body);
     expect(body).toEqual({
       camillaControlWsUrl: 'wss://secure.example.com:3146',
-      camillaSpectrumWsUrl: 'wss://secure.example.com:6413',
     });
   });
 
   it('should handle domain names correctly', async () => {
     process.env.CAMILLA_CONTROL_WS_URL = 'ws://camillaeq.his.house:3146';
-    process.env.CAMILLA_SPECTRUM_WS_URL = 'ws://camillaeq.his.house:6413';
 
     const response = await app.inject({
       method: 'GET',
@@ -103,7 +94,6 @@ describe('Settings endpoint', () => {
     const body = JSON.parse(response.body);
     expect(body).toEqual({
       camillaControlWsUrl: 'ws://camillaeq.his.house:3146',
-      camillaSpectrumWsUrl: 'ws://camillaeq.his.house:6413',
     });
   });
 });

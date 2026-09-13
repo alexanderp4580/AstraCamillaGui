@@ -7,32 +7,32 @@ import { WebSocketServer, WebSocket } from 'ws';
 
 export interface MockCamillaDSPOptions {
   controlPort?: number;
-  spectrumPort?: number;
 }
 
 const DEFAULT_CONTROL_PORT = 3146;
-const DEFAULT_SPECTRUM_PORT = 6413;
+// Mirrors CamillaDSP's ANALYSIS_POLL_INTERVAL (see socketserver.rs in the DSP repo).
+const ANALYSIS_PUSH_INTERVAL_MS = 100;
 
 export class MockCamillaDSP {
   private controlServer: WebSocketServer | null = null;
-  private spectrumServer: WebSocketServer | null = null;
   private controlPort: number;
-  private spectrumPort: number;
   private config: any = null;
+  // Per-connection push state — mirrors the real server's per-connection
+  // subscription tracking (see LocalData in socketserver.rs).
+  private pushTimers = new Map<WebSocket, ReturnType<typeof setInterval>>();
+  private subscriptions = new Map<WebSocket, { spectrum: boolean; energy: boolean }>();
+  private spectrumSeq = 0;
+  private energySeq = 0;
 
   constructor(options: MockCamillaDSPOptions = {}) {
     this.controlPort = options.controlPort || DEFAULT_CONTROL_PORT;
-    this.spectrumPort = options.spectrumPort || DEFAULT_SPECTRUM_PORT;
   }
 
   /**
-   * Start both WebSocket servers
+   * Start the WebSocket server
    */
   async start(): Promise<void> {
-    await Promise.all([
-      this.startControlServer(),
-      this.startSpectrumServer(),
-    ]);
+    await this.startControlServer();
   }
 
   /**
@@ -54,37 +54,13 @@ export class MockCamillaDSP {
         });
 
         this.controlServer.on('connection', (ws: WebSocket) => {
+          this.subscriptions.set(ws, { spectrum: false, energy: false });
           ws.on('message', (data: Buffer) => {
             this.handleControlMessage(ws, data.toString());
           });
-        });
-      } catch (error) {
-        reject(error);
-      }
-    });
-  }
-
-  /**
-   * Start spectrum WebSocket server
-   */
-  private async startSpectrumServer(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      try {
-        this.spectrumServer = new WebSocketServer({ port: this.spectrumPort });
-
-        this.spectrumServer.on('listening', () => {
-          console.log(`Mock CamillaDSP spectrum server listening on port ${this.spectrumPort}`);
-          resolve();
-        });
-
-        this.spectrumServer.on('error', (error: any) => {
-          console.error('Spectrum server error:', error);
-          reject(error);
-        });
-
-        this.spectrumServer.on('connection', (ws: WebSocket) => {
-          ws.on('message', (data: Buffer) => {
-            this.handleSpectrumMessage(ws, data.toString());
+          ws.on('close', () => {
+            this.stopPushingIfIdle(ws);
+            this.subscriptions.delete(ws);
           });
         });
       } catch (error) {
@@ -168,6 +144,16 @@ export class MockCamillaDSP {
           this.sendResponse(ws, 'GetProcessingLoad', { result: 'Ok', value: 5.2 });
           break;
 
+        case 'Subscribe':
+          this.handleSubscribe(ws, request.Subscribe, true);
+          this.sendResponse(ws, 'Subscribe', { result: 'Ok' });
+          break;
+
+        case 'Unsubscribe':
+          this.handleSubscribe(ws, request.Unsubscribe, false);
+          this.sendResponse(ws, 'Unsubscribe', { result: 'Ok' });
+          break;
+
         default:
           console.warn(`Unhandled command: ${command}`);
           this.sendResponse(ws, command, { result: 'Error', value: 'Unknown command' });
@@ -178,49 +164,66 @@ export class MockCamillaDSP {
   }
 
   /**
-   * Handle spectrum socket messages
+   * Mirrors CamillaDSP's `AnalysisTopic` handling in socketserver.rs: `Spectrum` and
+   * `Energy` topics toggle whether pushed frames are sent to this connection. Starts
+   * or stops the per-connection push interval as needed, matching the real server's
+   * "only pay for it while subscribed" behavior.
    */
-  private handleSpectrumMessage(ws: WebSocket, message: string): void {
-    try {
-      const request = message.replace(/"/g, '');
-
-      switch (request) {
-        case 'GetPlaybackSignalPeak':
-          this.sendResponse(ws, 'GetPlaybackSignalPeak', {
-            result: 'Ok',
-            value: this.generateMockSpectrumData(),
-          });
-          break;
-
-        case 'GetPlaybackSignalRms':
-          this.sendResponse(ws, 'GetPlaybackSignalRms', {
-            result: 'Ok',
-            value: this.generateMockSpectrumData(),
-          });
-          break;
-
-        case 'GetConfig':
-          this.sendResponse(ws, 'GetConfig', { result: 'Ok', value: this.getSpectrumConfigYaml() });
-          break;
-
-        case 'GetConfigTitle':
-          this.sendResponse(ws, 'GetConfigTitle', { result: 'Ok', value: 'Mock Spectrum Configuration' });
-          break;
-
-        case 'GetConfigDescription':
-          this.sendResponse(ws, 'GetConfigDescription', { result: 'Ok', value: '256-bin spectrum analyzer' });
-          break;
-
-        case 'SetUpdateInterval':
-          this.sendResponse(ws, 'SetUpdateInterval', { result: 'Ok', value: true });
-          break;
-
-        default:
-          console.warn(`Unhandled spectrum command: ${request}`);
-          this.sendResponse(ws, request, { result: 'Error', value: 'Unknown command' });
+  private handleSubscribe(ws: WebSocket, topics: unknown, subscribing: boolean): void {
+    const sub = this.subscriptions.get(ws) ?? { spectrum: false, energy: false };
+    for (const topic of Array.isArray(topics) ? topics : []) {
+      if (topic === 'Energy') {
+        sub.energy = subscribing;
+      } else if (topic && typeof topic === 'object' && 'Spectrum' in topic) {
+        sub.spectrum = subscribing;
       }
-    } catch (error) {
-      console.error('Error handling spectrum message:', error);
+    }
+    this.subscriptions.set(ws, sub);
+
+    if (sub.spectrum || sub.energy) {
+      this.startPushing(ws);
+    } else {
+      this.stopPushingIfIdle(ws);
+    }
+  }
+
+  private startPushing(ws: WebSocket): void {
+    if (this.pushTimers.has(ws)) {
+      return;
+    }
+    const timer = setInterval(() => {
+      const sub = this.subscriptions.get(ws);
+      if (!sub || ws.readyState !== ws.OPEN) {
+        return;
+      }
+      if (sub.spectrum) {
+        this.spectrumSeq += 1;
+        this.sendResponse(ws, 'SpectrumFrame', {
+          seq: this.spectrumSeq,
+          bins_db: this.generateMockSpectrumData(),
+        });
+      }
+      if (sub.energy) {
+        this.energySeq += 1;
+        this.sendResponse(ws, 'EnergyFrame', {
+          seq: this.energySeq,
+          rms_db: [-20, -20],
+          peak_db: [-15, -15],
+        });
+      }
+    }, ANALYSIS_PUSH_INTERVAL_MS);
+    this.pushTimers.set(ws, timer);
+  }
+
+  private stopPushingIfIdle(ws: WebSocket): void {
+    const sub = this.subscriptions.get(ws);
+    if (sub && (sub.spectrum || sub.energy)) {
+      return;
+    }
+    const timer = this.pushTimers.get(ws);
+    if (timer) {
+      clearInterval(timer);
+      this.pushTimers.delete(ws);
     }
   }
 
@@ -233,12 +236,12 @@ export class MockCamillaDSP {
   }
 
   /**
-   * Generate mock spectrum data in dBFS format (MVP-16)
-   * Returns 256 frequency bins with a realistic-looking curve
-   * Range: -100 dBFS (silence) to -12 dBFS (typical peak)
+   * Generate mock spectrum data in dBFS format
+   * Returns 64 frequency bins (matching SpectrumStatus's default in the DSP fork)
+   * with a realistic-looking curve. Range: -100 dBFS (silence) to -12 dBFS (typical peak)
    */
   private generateMockSpectrumData(): number[] {
-    const numBins = 256;
+    const numBins = 64;
     const bins: number[] = [];
     const time = Date.now() / 1000; // Use time for gentle animation
     
@@ -339,31 +342,6 @@ pipeline:
   }
 
   /**
-   * Get spectrum config YAML
-   */
-  private getSpectrumConfigYaml(): string {
-    return `---
-devices:
-  samplerate: 48000
-  chunksize: 1024
-  capture:
-    type: Alsa
-    channels: 2
-    device: "hw:Loopback,1,0"
-    format: S32LE
-  playback:
-    type: File
-    channels: 2
-    filename: "/dev/null"
-    format: S32LE
-
-filters: {}
-
-pipeline: []
-`;
-  }
-
-  /**
    * Get mock capture devices
    */
   private getMockCaptureDevices(): [string, string | null][] {
@@ -459,33 +437,22 @@ pipeline: []
   }
 
   /**
-   * Stop both servers
+   * Stop the server
    */
   async stop(): Promise<void> {
-    const promises: Promise<void>[] = [];
+    for (const timer of this.pushTimers.values()) {
+      clearInterval(timer);
+    }
+    this.pushTimers.clear();
+    this.subscriptions.clear();
 
     if (this.controlServer) {
-      promises.push(
-        new Promise((resolve) => {
-          this.controlServer!.close(() => {
-            console.log('Mock control server stopped');
-            resolve();
-          });
-        })
-      );
+      await new Promise<void>((resolve) => {
+        this.controlServer!.close(() => {
+          console.log('Mock control server stopped');
+          resolve();
+        });
+      });
     }
-
-    if (this.spectrumServer) {
-      promises.push(
-        new Promise((resolve) => {
-          this.spectrumServer!.close(() => {
-            console.log('Mock spectrum server stopped');
-            resolve();
-          });
-        })
-      );
-    }
-
-    await Promise.all(promises);
   }
 }

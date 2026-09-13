@@ -1,6 +1,6 @@
 /**
  * Integration tests for CamillaDSP client module
- * Tests against mock WebSocket servers
+ * Tests against a mock WebSocket server
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from 'vitest';
@@ -21,11 +21,9 @@ global.localStorage = {
 };
 
 describe('CamillaDSP Integration Tests', () => {
-  const CONTROL_PORT = 13146; // Test ports to avoid conflicts
-  const SPECTRUM_PORT = 16413;
-  
+  const CONTROL_PORT = 13146; // Test port to avoid conflicts
+
   let controlServer: WebSocketServer;
-  let spectrumServer: WebSocketServer;
   let dsp: CamillaDSP;
 
   // Silence console output during tests
@@ -197,6 +195,14 @@ describe('CamillaDSP Integration Tests', () => {
             );
             break;
 
+          case 'Subscribe':
+            ws.send(JSON.stringify({ Subscribe: { result: 'Ok' } }));
+            break;
+
+          case 'Unsubscribe':
+            ws.send(JSON.stringify({ Unsubscribe: { result: 'Ok' } }));
+            break;
+
           default:
             ws.send(
               JSON.stringify({
@@ -207,64 +213,13 @@ describe('CamillaDSP Integration Tests', () => {
       });
     });
 
-    // Start spectrum server
-    spectrumServer = new WebSocketServer({ port: SPECTRUM_PORT });
-    spectrumServer.on('connection', (ws) => {
-      ws.on('message', (data) => {
-        const request = JSON.parse(data.toString());
-        const message = typeof request === 'string' ? request : Object.keys(request)[0];
-
-        if (message === 'GetPlaybackSignalPeak') {
-          // Return 256 bins (mock spectrum data in dBFS)
-          const minDb = -100;
-          const maxDb = -12;
-          
-          const bins = Array.from({ length: 256 }, (_, i) => {
-            const freq = i / 256;
-            const magnitude = 0.3 + Math.sin(freq * Math.PI * 4) * 0.2;
-            // Convert [0..1] to dBFS
-            return minDb + magnitude * (maxDb - minDb);
-          });
-          
-          ws.send(
-            JSON.stringify({
-              GetPlaybackSignalPeak: {
-                result: 'Ok',
-                value: bins,
-              },
-            })
-          );
-        } else if (message === 'GetConfig') {
-          ws.send(
-            JSON.stringify({
-              GetConfig: { result: 'Ok', value: 'devices:\n  samplerate: 48000\n  chunksize: 1024' },
-            })
-          );
-        } else if (message === 'GetConfigTitle') {
-          ws.send(
-            JSON.stringify({
-              GetConfigTitle: { result: 'Ok', value: 'Spectrum Config Title' },
-            })
-          );
-        } else if (message === 'GetConfigDescription') {
-          ws.send(
-            JSON.stringify({
-              GetConfigDescription: { result: 'Ok', value: 'Spectrum config description' },
-            })
-          );
-        }
-      });
-    });
-
-    // Wait for servers to be ready
+    // Wait for the server to be ready
     await new Promise((resolve) => setTimeout(resolve, 100));
   });
 
   afterAll(async () => {
     await new Promise<void>((resolve) => {
-      controlServer.close(() => {
-        spectrumServer.close(() => resolve());
-      });
+      controlServer.close(() => resolve());
     });
   });
 
@@ -273,18 +228,18 @@ describe('CamillaDSP Integration Tests', () => {
   });
 
   describe('Connection', () => {
-    it('should connect to both control and spectrum sockets', async () => {
-      const connected = await dsp.connect('localhost', CONTROL_PORT, SPECTRUM_PORT);
+    it('should connect to the control socket', async () => {
+      const connected = await dsp.connect('localhost', CONTROL_PORT);
 
       expect(connected).toBe(true);
       expect(dsp.connected).toBe(true);
-      expect(dsp.spectrumConnected).toBe(true);
+      expect(dsp.isControlSocketOpen()).toBe(true);
 
       dsp.disconnect();
     });
 
     it('should download and normalize config after connection', async () => {
-      await dsp.connect('localhost', CONTROL_PORT, SPECTRUM_PORT);
+      await dsp.connect('localhost', CONTROL_PORT);
 
       expect(dsp.config).toBeDefined();
       expect(dsp.config?.devices).toEqual(mockConfig.devices);
@@ -304,7 +259,7 @@ describe('CamillaDSP Integration Tests', () => {
 
   describe('Config Operations', () => {
     beforeEach(async () => {
-      await dsp.connect('localhost', CONTROL_PORT, SPECTRUM_PORT);
+      await dsp.connect('localhost', CONTROL_PORT);
     });
 
     afterEach(() => {
@@ -379,40 +334,60 @@ describe('CamillaDSP Integration Tests', () => {
     });
   });
 
-  describe('Spectrum Data', () => {
+  describe('Analysis subscription', () => {
     beforeEach(async () => {
-      await dsp.connect('localhost', CONTROL_PORT, SPECTRUM_PORT);
+      await dsp.connect('localhost', CONTROL_PORT);
     });
 
     afterEach(() => {
       dsp.disconnect();
     });
 
-    it('should get spectrum data', async () => {
-      const data = await dsp.getSpectrumData();
+    it('should subscribe to the Spectrum topic and receive an ack', async () => {
+      const ok = await dsp.subscribe([{ Spectrum: {} }]);
+      expect(ok).toBe(true);
+    });
 
-      expect(data).toBeDefined();
-      expect(Array.isArray(data)).toBe(true);
-      expect(data.length).toBeGreaterThan(2); // Should be 256 bins
-      expect(data.length).toBe(256);
+    it('should subscribe to the Energy topic and receive an ack', async () => {
+      const ok = await dsp.subscribe(['Energy']);
+      expect(ok).toBe(true);
+    });
+
+    it('should unsubscribe and receive an ack', async () => {
+      await dsp.subscribe([{ Spectrum: {} }]);
+      const ok = await dsp.unsubscribe([{ Spectrum: {} }]);
+      expect(ok).toBe(true);
+    });
+
+    it('should route a pushed SpectrumFrame to onSpectrumFrame', async () => {
+      const frames: any[] = [];
+      dsp.onSpectrumFrame = (frame) => frames.push(frame);
+
+      // Simulate the server pushing a frame the way the real DSP does — no
+      // request/response envelope, just an unsolicited message on the same socket.
+      const client = Array.from(controlServer.clients)[0];
+      client.send(JSON.stringify({ SpectrumFrame: { seq: 1, bins_db: [-40, -50] } }));
+
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(frames).toEqual([{ seq: 1, binsDb: [-40, -50] }]);
     });
   });
 
   describe('Disconnect', () => {
     it('should disconnect properly', async () => {
-      await dsp.connect('localhost', CONTROL_PORT, SPECTRUM_PORT);
+      await dsp.connect('localhost', CONTROL_PORT);
       expect(dsp.connected).toBe(true);
 
       dsp.disconnect();
 
       expect(dsp.connected).toBe(false);
-      expect(dsp.spectrumConnected).toBe(false);
     });
   });
 
   describe('DSP Info Methods (MVP-17)', () => {
     beforeEach(async () => {
-      await dsp.connect('localhost', CONTROL_PORT, SPECTRUM_PORT);
+      await dsp.connect('localhost', CONTROL_PORT);
     });
 
     afterEach(() => {
@@ -443,8 +418,8 @@ describe('CamillaDSP Integration Tests', () => {
       expect(devices![0]).toEqual(['hw:0,0', 'Test Playback Device']);
     });
 
-    it('should get config YAML from control socket', async () => {
-      const yaml = await dsp.getConfigYaml('control');
+    it('should get config YAML', async () => {
+      const yaml = await dsp.getConfigYaml();
 
       expect(yaml).toBeDefined();
       expect(typeof yaml).toBe('string');
@@ -452,42 +427,22 @@ describe('CamillaDSP Integration Tests', () => {
       expect(yaml).toContain('samplerate');
     });
 
-    it('should get config YAML from spectrum socket', async () => {
-      const yaml = await dsp.getConfigYaml('spectrum');
-
-      expect(yaml).toBeDefined();
-      expect(typeof yaml).toBe('string');
-      expect(yaml).toContain('devices');
-    });
-
-    it('should get config title from control socket', async () => {
-      const title = await dsp.getConfigTitle('control');
+    it('should get config title', async () => {
+      const title = await dsp.getConfigTitle();
 
       expect(title).toBe('Test Config Title');
     });
 
-    it('should get config title from spectrum socket', async () => {
-      const title = await dsp.getConfigTitle('spectrum');
-
-      expect(title).toBe('Spectrum Config Title');
-    });
-
-    it('should get config description from control socket', async () => {
-      const desc = await dsp.getConfigDescription('control');
+    it('should get config description', async () => {
+      const desc = await dsp.getConfigDescription();
 
       expect(desc).toBe('Test config description');
-    });
-
-    it('should get config description from spectrum socket', async () => {
-      const desc = await dsp.getConfigDescription('spectrum');
-
-      expect(desc).toBe('Spectrum config description');
     });
   });
 
   describe('Success/Failure Callbacks (MVP-17)', () => {
     beforeEach(async () => {
-      await dsp.connect('localhost', CONTROL_PORT, SPECTRUM_PORT);
+      await dsp.connect('localhost', CONTROL_PORT);
     });
 
     afterEach(() => {

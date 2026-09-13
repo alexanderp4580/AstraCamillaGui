@@ -21,7 +21,6 @@
 
   // Derive status color from connection and upload states
   // Green = connected or upload success
-  // Yellow = degraded (control OK, spectrum down)
   // Blue = connecting or upload pending
   // Red = error
   // Default = muted
@@ -40,9 +39,6 @@
     // Otherwise use connection state
     if ($connectionState === 'connected') {
       return 'green';
-    }
-    if ($connectionState === 'degraded') {
-      return 'yellow';
     }
     if ($connectionState === 'connecting') {
       return 'blue';

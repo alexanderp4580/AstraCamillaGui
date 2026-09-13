@@ -75,7 +75,6 @@ export interface VersionInfo {
  */
 export interface SettingsInfo {
   camillaControlWsUrl: string | null;
-  camillaSpectrumWsUrl: string | null;
 }
 
 /**

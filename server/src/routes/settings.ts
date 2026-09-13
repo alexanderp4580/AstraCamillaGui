@@ -5,7 +5,6 @@ import { FastifyInstance } from 'fastify';
  */
 export interface SettingsResponse {
   camillaControlWsUrl: string | null;
-  camillaSpectrumWsUrl: string | null;
 }
 
 /**
@@ -31,7 +30,6 @@ export function registerSettingsRoutes(app: FastifyInstance): void {
   app.get('/api/settings', async (): Promise<SettingsResponse> => {
     return {
       camillaControlWsUrl: parseWsUrl(process.env.CAMILLA_CONTROL_WS_URL),
-      camillaSpectrumWsUrl: parseWsUrl(process.env.CAMILLA_SPECTRUM_WS_URL),
     };
   });
 }
