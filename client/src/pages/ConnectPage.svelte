@@ -17,7 +17,20 @@
   } from '../state/dspStore';
   import { getSettings } from '../lib/api';
 
-  let server = localStorage.getItem('camillaDSP.server') || 'localhost';
+  // Default to whichever host served this page. The DSP normally runs on the
+  // same machine as the UI, so a phone opening http://192.168.x.y:5173 should
+  // talk to the DSP at 192.168.x.y, not at "localhost", which on a phone means
+  // the phone itself. A stored loopback address is also ignored when the page
+  // was clearly loaded from somewhere else, since that combination can only be
+  // a stale value left over from an earlier session.
+  const pageHost = window.location.hostname;
+  const isLoopback = (host: string) =>
+    host === 'localhost' || host === '127.0.0.1' || host === '[::1]' || host === '::1';
+  const storedServer = localStorage.getItem('camillaDSP.server');
+  let server =
+    storedServer && !(isLoopback(storedServer) && !isLoopback(pageHost))
+      ? storedServer
+      : pageHost || 'localhost';
   let controlPort = localStorage.getItem('camillaDSP.controlPort') || '1234';
   let spectrumPort = localStorage.getItem('camillaDSP.spectrumPort') || '1235';
   let autoReconnect = localStorage.getItem('camillaDSP.autoReconnect') === 'true';

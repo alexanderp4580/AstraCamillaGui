@@ -7,7 +7,7 @@ export default defineConfig({
     // Listen on the LAN so the dev server can be opened from a phone, which is
     // the target form factor and cannot be judged in a desktop browser.
     host: true,
-    allowedHosts: ['steamdeck', 'steamdeck.local', 'moode', 'moode.local'],
+    allowedHosts: true,
     port: 5173,
     proxy: {
       '/api': {
