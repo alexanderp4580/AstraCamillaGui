@@ -1,4 +1,4 @@
-import Fastify, { FastifyInstance } from 'fastify';
+import Fastify, { FastifyError, FastifyInstance } from 'fastify';
 import { AppError, ErrorCode } from './types/errors.js';
 
 const isDevelopment = process.env.NODE_ENV !== 'production';
@@ -74,7 +74,7 @@ export function buildApp(): FastifyInstance {
   });
 
   // Error handler for structured error responses
-  app.setErrorHandler((error, request, reply) => {
+  app.setErrorHandler((error: FastifyError, request, reply) => {
     // Log the error
     request.log.error({
       err: error,
