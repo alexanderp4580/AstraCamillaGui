@@ -95,19 +95,6 @@ describe('eqStore', () => {
     });
   });
 
-  describe('toggleBandEnabled', () => {
-    // NOTE: toggleBandEnabled now manipulates pipeline membership (MVP-21)
-    // These tests require a full DSP config setup with initializeFromConfig()
-    // and are better suited for integration/behavior tests
-    it.skip('requires DSP config infrastructure (see EqPage.behavior.test.ts)', () => {
-      // toggleBandEnabled(0) now:
-      // - reads filterNames from extracted config
-      // - modifies dspStore.config.pipeline (add/remove filter name)
-      // - updates overlay
-      // - triggers upload/refresh
-    });
-  });
-
   describe('selectBand', () => {
     it('sets selected band index', () => {
       selectBand(1);

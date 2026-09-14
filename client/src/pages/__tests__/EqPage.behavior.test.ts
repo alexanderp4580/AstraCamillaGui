@@ -114,13 +114,4 @@ describe('EqPage behavior', () => {
     expect(bandsValue.length).toBeGreaterThan(0);
     expect(bandsValue[0].freq).toBe(500);
   });
-
-  it.skip('should toggle band enabled state (requires DSP instance mock)', async () => {
-    // NOTE: toggleBandEnabled now manipulates pipeline membership (MVP-21)
-    // This requires:
-    // - mocking getDspInstance() to return a valid DSP instance
-    // - mocking config validation
-    // - mocking the upload flow
-    // Better suited for a full integration test with mock DSP
-  });
 });
