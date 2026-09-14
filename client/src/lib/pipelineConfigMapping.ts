@@ -224,9 +224,13 @@ export function camillaDSPToPipelineConfig(
         const params = filterDef.parameters;
         const filterObj: any = {
           type: params.type,
-          freq: params.freq,
-          q: params.q,
         };
+        if ('freq' in params) {
+          filterObj.freq = params.freq;
+        }
+        if ('q' in params) {
+          filterObj.q = params.q;
+        }
 
         // Add gain if present
         if ('gain' in params) {

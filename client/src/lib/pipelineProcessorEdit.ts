@@ -3,17 +3,17 @@
  * All functions return new config objects (immutable pattern)
  */
 
-import type { CamillaDSPConfig } from './camillaDSP';
+import type { GuiReadyCamillaDSPConfig } from './camillaDSP';
 
 /**
  * Set processor pipeline step bypass state
  */
 export function setProcessorStepBypassed(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   stepIndex: number,
   bypassed: boolean
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   if (!updated.pipeline || stepIndex >= updated.pipeline.length) {
     throw new Error(`Invalid pipeline step index: ${stepIndex}`);
@@ -33,12 +33,12 @@ export function setProcessorStepBypassed(
  * Set compressor parameter
  */
 export function setCompressorParam(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   processorName: string,
   param: 'threshold' | 'attack' | 'release' | 'factor' | 'makeup_gain' | 'channels',
   value: number
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   if (!updated.processors || !updated.processors[processorName]) {
     throw new Error(`Processor "${processorName}" not found`);
@@ -82,12 +82,12 @@ export function setCompressorParam(
  * Set noise gate parameter
  */
 export function setNoiseGateParam(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   processorName: string,
   param: 'threshold' | 'attack' | 'release' | 'attenuation' | 'channels',
   value: number
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   if (!updated.processors || !updated.processors[processorName]) {
     throw new Error(`Processor "${processorName}" not found`);

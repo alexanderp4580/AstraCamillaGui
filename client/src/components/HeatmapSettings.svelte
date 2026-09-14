@@ -132,7 +132,7 @@
   </div>
 
   <div class="settings-section">
-    <label class="section-label">Mask Mode</label>
+    <span class="section-label">Mask Mode</span>
     <div class="mask-buttons">
       <button
         class="mask-btn"
@@ -170,7 +170,7 @@
 
   <div class="settings-section knobs-section">
     <div class="knob-row">
-      <label class="knob-label">Contrast</label>
+      <span class="knob-label">Contrast</span>
       <KnobDial
         value={alphaGamma}
         min={0.8}
@@ -183,7 +183,7 @@
     </div>
 
     <div class="knob-row">
-      <label class="knob-label">Gain</label>
+      <span class="knob-label">Gain</span>
       <KnobDial
         value={magnitudeGain}
         min={0.5}
@@ -196,7 +196,7 @@
     </div>
 
     <div class="knob-row">
-      <label class="knob-label">Gate</label>
+      <span class="knob-label">Gate</span>
       <KnobDial
         value={gateThreshold}
         min={0.0}
@@ -209,7 +209,7 @@
     </div>
 
     <div class="knob-row">
-      <label class="knob-label">Max α</label>
+      <span class="knob-label">Max α</span>
       <KnobDial
         value={maxAlpha}
         min={0.2}

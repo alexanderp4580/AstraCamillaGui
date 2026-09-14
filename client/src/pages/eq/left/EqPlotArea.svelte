@@ -331,10 +331,39 @@
       event.preventDefault();
       return;
     }
-    
+
     event.preventDefault();
     const delta = event.deltaY > 0 ? -0.1 : 0.1;
     setBandQ(bandIndex, band.q + delta);
+  }
+
+  // Keyboard equivalent of token drag: left/right = freq, up/down = gain,
+  // shift = fine step (mirrors the pointer-drag step sizes above and the wheel's Q step).
+  function handleTokenKeyDown(event: KeyboardEvent, bandIndex: number) {
+    const band = $bands[bandIndex];
+    if (!band.enabled) return;
+
+    const supportsGain = band.type === 'Peaking' || band.type === 'LowShelf' || band.type === 'HighShelf';
+    const fine = event.shiftKey;
+
+    switch (event.key) {
+      case 'ArrowLeft':
+        setBandFreq(bandIndex, band.freq / (fine ? 1.01 : 1.05));
+        break;
+      case 'ArrowRight':
+        setBandFreq(bandIndex, band.freq * (fine ? 1.01 : 1.05));
+        break;
+      case 'ArrowDown':
+        if (supportsGain) setBandGain(bandIndex, band.gain - (fine ? 0.1 : 0.5));
+        break;
+      case 'ArrowUp':
+        if (supportsGain) setBandGain(bandIndex, band.gain + (fine ? 0.1 : 0.5));
+        break;
+    }
+  }
+
+  function handleTokenFocus(bandIndex: number) {
+    selectBand(bandIndex);
   }
   
   // Reactive computed values
@@ -571,6 +600,8 @@
         on:tokenPointerMove={(e) => handleTokenPointerMove(e.detail.event)}
         on:tokenPointerUp={(e) => handleTokenPointerUp(e.detail.event)}
         on:tokenWheel={(e) => handleTokenWheel(e.detail.event, e.detail.bandIndex)}
+        on:tokenKeyDown={(e) => handleTokenKeyDown(e.detail.event, e.detail.bandIndex)}
+        on:tokenFocus={(e) => handleTokenFocus(e.detail.bandIndex)}
       />
     </svg>
   </div>

@@ -44,7 +44,7 @@ import {
   setNoiseGateParam,
 } from '../lib/pipelineProcessorEdit';
 import { validateMixerRouting, type MixerValidationResult } from '../lib/mixerRoutingValidation';
-import type { CamillaDSPConfig } from '../lib/camillaDSP';
+import type { GuiReadyCamillaDSPConfig } from '../lib/camillaDSP';
 import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabledFiltersAfterPipelineReorder, removeDisabledLocationsForStep, remapDisabledFiltersAfterFilterStepChannelsChange } from '../lib/disabledFiltersOverlay';
   import FilterBlock from '../components/pipeline/FilterBlock.svelte';
   import MixerBlock from '../components/pipeline/MixerBlock.svelte';
@@ -531,14 +531,14 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
   }
 
   // MVP-22: Mixer edit handlers
-  function handleMixerEdit(mixerName: string, mutationFn: (config: CamillaDSPConfig) => CamillaDSPConfig) {
+  function handleMixerEdit(mixerName: string, mutationFn: (config: GuiReadyCamillaDSPConfig) => GuiReadyCamillaDSPConfig) {
     if (!$dspConfig) return;
 
     // Clear any previous error
     validationError = null;
 
     // Take snapshot for potential revert
-    const snapshot = JSON.parse(JSON.stringify($dspConfig)) as CamillaDSPConfig;
+    const snapshot = JSON.parse(JSON.stringify($dspConfig)) as GuiReadyCamillaDSPConfig;
 
     try {
       // Apply mutation
@@ -580,7 +580,8 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
 
   function handleMixerSetGain(event: CustomEvent<{ destIndex: number; sourceIndex: number; gain: number }>) {
     if (!selection || selection.kind !== 'block') return;
-    const block = blocks.find(b => b.blockId === selection.blockId && b.kind === 'mixer');
+    const sel = selection;
+    const block = blocks.find(b => b.blockId === sel.blockId && b.kind === 'mixer');
     if (!block || block.kind !== 'mixer') return;
 
     const { destIndex, sourceIndex, gain } = event.detail;
@@ -591,7 +592,8 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
 
   function handleMixerToggleSourceMute(event: CustomEvent<{ destIndex: number; sourceIndex: number }>) {
     if (!selection || selection.kind !== 'block') return;
-    const block = blocks.find(b => b.blockId === selection.blockId && b.kind === 'mixer');
+    const sel = selection;
+    const block = blocks.find(b => b.blockId === sel.blockId && b.kind === 'mixer');
     if (!block || block.kind !== 'mixer') return;
 
     const { destIndex, sourceIndex } = event.detail;
@@ -602,7 +604,8 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
 
   function handleMixerToggleSourceInvert(event: CustomEvent<{ destIndex: number; sourceIndex: number }>) {
     if (!selection || selection.kind !== 'block') return;
-    const block = blocks.find(b => b.blockId === selection.blockId && b.kind === 'mixer');
+    const sel = selection;
+    const block = blocks.find(b => b.blockId === sel.blockId && b.kind === 'mixer');
     if (!block || block.kind !== 'mixer') return;
 
     const { destIndex, sourceIndex } = event.detail;
@@ -613,7 +616,8 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
 
   function handleMixerSetDestMute(event: CustomEvent<{ destIndex: number; mute: boolean }>) {
     if (!selection || selection.kind !== 'block') return;
-    const block = blocks.find(b => b.blockId === selection.blockId && b.kind === 'mixer');
+    const sel = selection;
+    const block = blocks.find(b => b.blockId === sel.blockId && b.kind === 'mixer');
     if (!block || block.kind !== 'mixer') return;
 
     const { destIndex, mute } = event.detail;
@@ -624,7 +628,8 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
 
   function handleMixerAddSource(event: CustomEvent<{ destIndex: number; channel: number }>) {
     if (!selection || selection.kind !== 'block') return;
-    const block = blocks.find(b => b.blockId === selection.blockId && b.kind === 'mixer');
+    const sel = selection;
+    const block = blocks.find(b => b.blockId === sel.blockId && b.kind === 'mixer');
     if (!block || block.kind !== 'mixer') return;
 
     const { destIndex, channel } = event.detail;
@@ -635,7 +640,8 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
 
   function handleMixerRemoveSource(event: CustomEvent<{ destIndex: number; sourceIndex: number }>) {
     if (!selection || selection.kind !== 'block') return;
-    const block = blocks.find(b => b.blockId === selection.blockId && b.kind === 'mixer');
+    const sel = selection;
+    const block = blocks.find(b => b.blockId === sel.blockId && b.kind === 'mixer');
     if (!block || block.kind !== 'mixer') return;
 
     const { destIndex, sourceIndex } = event.detail;
@@ -647,7 +653,8 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
   // Compute mixer validation results for selected mixer block
   $: selectedMixerValidation = (() => {
     if (!selection || selection.kind !== 'block' || !$dspConfig) return null;
-    const block = blocks.find(b => b.blockId === selection.blockId);
+    const sel = selection;
+    const block = blocks.find(b => b.blockId === sel.blockId);
     if (!block || block.kind !== 'mixer') return null;
     const mixer = $dspConfig.mixers[block.name];
     if (!mixer) return null;
@@ -787,8 +794,9 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
       }
       
       const newStep = createNewFilterStep($dspConfig, requestedChannels);
-      const insertIndex = selection?.kind === 'block' 
-        ? blocks.findIndex(b => b.blockId === selection.blockId) + 1 
+      const sel = selection;
+      const insertIndex = sel?.kind === 'block'
+        ? blocks.findIndex(b => b.blockId === sel.blockId) + 1
         : blocks.length;
       const updatedConfig = insertPipelineStep($dspConfig, insertIndex, newStep);
       
@@ -816,8 +824,9 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
     
     try {
       const { mixerName, mixerDef, step } = createNewMixerBlock($dspConfig);
-      const insertIndex = selection?.kind === 'block'
-        ? blocks.findIndex(b => b.blockId === selection.blockId) + 1
+      const sel = selection;
+      const insertIndex = sel?.kind === 'block'
+        ? blocks.findIndex(b => b.blockId === sel.blockId) + 1
         : blocks.length;
       
       let updatedConfig = JSON.parse(JSON.stringify($dspConfig)) as typeof $dspConfig;
@@ -853,8 +862,9 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
     
     try {
       const { processorName, processorDef, step } = createNewProcessorBlock($dspConfig, 'Processor', baseName);
-      const insertIndex = selection?.kind === 'block'
-        ? blocks.findIndex(b => b.blockId === selection.blockId) + 1
+      const sel = selection;
+      const insertIndex = sel?.kind === 'block'
+        ? blocks.findIndex(b => b.blockId === sel.blockId) + 1
         : blocks.length;
       
       let updatedConfig = JSON.parse(JSON.stringify($dspConfig)) as typeof $dspConfig;
@@ -883,11 +893,12 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
 
   function handleRemoveBlock() {
     if (!selection || selection.kind !== 'block' || !$dspConfig) return;
+    const sel = selection;
     validationError = null;
     const snapshot = JSON.parse(JSON.stringify($dspConfig));
-    
+
     try {
-      const blockIndex = blocks.findIndex(b => b.blockId === selection.blockId);
+      const blockIndex = blocks.findIndex(b => b.blockId === sel.blockId);
       if (blockIndex === -1) throw new Error('Block not found');
       
       // If removing a Filter block, cleanup its disabled filter overlay state

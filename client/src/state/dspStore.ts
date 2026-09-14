@@ -4,7 +4,7 @@
  */
 
 import { writable, derived, get } from 'svelte/store';
-import { CamillaDSP, type CamillaDSPConfig, type DeviceEntry, type DspEventInfo, type SocketLifecycleEvent } from '../lib/camillaDSP';
+import { CamillaDSP, normalizeGuiReadyConfig, type GuiReadyCamillaDSPConfig, type DeviceEntry, type DspEventInfo, type SocketLifecycleEvent } from '../lib/camillaDSP';
 import { debounce } from '../lib/debounce';
 import { getLatestState } from '../lib/api';
 import { initializeFromConfig } from './eqStore';
@@ -27,7 +27,7 @@ export interface DspState {
   connectionState: ConnectionState;
   controlConnected: boolean;
   lastError?: string;
-  config?: CamillaDSPConfig;
+  config?: GuiReadyCamillaDSPConfig;
   volumeDb?: number;
   version?: string;
   availableDevices?: {
@@ -324,7 +324,7 @@ async function maybeRestoreLatestState(): Promise<void> {
 
   try {
     // Fetch latest state from server using API module
-    const latestConfig = await getLatestState();
+    const latestConfig = normalizeGuiReadyConfig(await getLatestState());
 
     // Upload to CamillaDSP
     dspInstance.config = latestConfig;
@@ -337,9 +337,7 @@ async function maybeRestoreLatestState(): Promise<void> {
 
     // Update store
     updateConfig(latestConfig);
-    if (latestConfig.filters) {
-      initializeFromConfig(latestConfig as any); // Type assertion safe - we need filters to initialize
-    }
+    initializeFromConfig(latestConfig as any);
 
     console.log('Successfully restored latest state from server');
   } catch (error) {
@@ -350,7 +348,7 @@ async function maybeRestoreLatestState(): Promise<void> {
 /**
  * Update stored config (called after successful uploads)
  */
-export function updateConfig(config: CamillaDSPConfig): void {
+export function updateConfig(config: GuiReadyCamillaDSPConfig): void {
   dspState.update((s) => ({
     ...s,
     config,

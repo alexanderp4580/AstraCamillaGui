@@ -3,7 +3,7 @@
  * All functions return new config objects (immutable pattern)
  */
 
-import type { CamillaDSPConfig } from './camillaDSP';
+import type { GuiReadyCamillaDSPConfig } from './camillaDSP';
 import { clampFreqHz, clampGainDb, clampQ } from './eqParamClamp';
 import { isGainCapable } from './camillaTypes';
 import {
@@ -17,11 +17,11 @@ import {
  * Set biquad filter frequency
  */
 export function setBiquadFreq(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   filterName: string,
   freq: number
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   if (!updated.filters) {
     throw new Error('No filters in config');
@@ -41,11 +41,11 @@ export function setBiquadFreq(
  * Set biquad filter Q
  */
 export function setBiquadQ(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   filterName: string,
   q: number
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   if (!updated.filters) {
     throw new Error('No filters in config');
@@ -65,11 +65,11 @@ export function setBiquadQ(
  * Set biquad filter gain (only for gain-capable types)
  */
 export function setBiquadGain(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   filterName: string,
   gain: number
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   if (!updated.filters) {
     throw new Error('No filters in config');
@@ -95,11 +95,11 @@ export function setBiquadGain(
  * Filter definition remains in config.filters for re-enabling
  */
 export function disableFilter(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   stepIndex: number,
   filterName: string
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   if (!updated.pipeline) {
     throw new Error('No pipeline in config');
@@ -142,12 +142,12 @@ export function disableFilter(
  * Enable filter (add back to pipeline at original position, remove from overlay for this step only)
  */
 export function enableFilter(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   stepIndex: number,
   filterName: string,
   insertIndex: number
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   if (!updated.pipeline) {
     throw new Error('No pipeline in config');
@@ -179,11 +179,11 @@ export function enableFilter(
  * @param filterName - Name of filter to remove
  */
 export function removeFilterFromStep(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   stepIndex: number,
   filterName: string
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   if (!updated.pipeline) {
     throw new Error('No pipeline in config');
@@ -212,9 +212,9 @@ export function removeFilterFromStep(
  * Conservative: only removes if truly orphaned
  */
 export function removeFilterDefinitionIfOrphaned(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   filterName: string
-): CamillaDSPConfig {
+): GuiReadyCamillaDSPConfig {
   // Check all Filter steps for references
   if (config.pipeline) {
     for (const step of config.pipeline) {
@@ -229,7 +229,7 @@ export function removeFilterDefinitionIfOrphaned(
   }
   
   // Not referenced anywhere, safe to remove
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   if (updated.filters) {
     delete updated.filters[filterName];
   }
@@ -240,7 +240,7 @@ export function removeFilterDefinitionIfOrphaned(
 /**
  * Generate a unique filter name that doesn't collide with existing filters
  */
-function generateUniqueFilterName(config: CamillaDSPConfig): string {
+function generateUniqueFilterName(config: GuiReadyCamillaDSPConfig): string {
   const existingNames = Object.keys(config.filters || {});
   let counter = 1;
   let name = `EQ${counter}`;
@@ -262,11 +262,11 @@ function generateUniqueFilterName(config: CamillaDSPConfig): string {
  * @returns Updated config and the name of the created filter
  */
 export function addNewBiquadFilterToStep(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   stepIndex: number,
   biquadType: string
-): { config: CamillaDSPConfig; filterName: string } {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): { config: GuiReadyCamillaDSPConfig; filterName: string } {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   if (!updated.pipeline || stepIndex < 0 || stepIndex >= updated.pipeline.length) {
     throw new Error(`Invalid step index: ${stepIndex}`);

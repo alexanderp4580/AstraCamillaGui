@@ -5,7 +5,7 @@
  */
 
 import { SocketRequestQueue } from './requestQueue';
-import type { PipelineStep } from './camillaSchema';
+import type { CamillaDSPConfig, PipelineStep } from './camillaSchema';
 
 // Re-export canonical schema types
 export type {
@@ -40,6 +40,27 @@ export type GuiReadyCamillaDSPConfig = {
   processors: Record<string, any>;
   pipeline: any[];
 };
+
+/**
+ * Normalize a raw (possibly sparse) CamillaDSPConfig into a GUI-ready config
+ * where filters/mixers/processors/pipeline are always present, never undefined.
+ */
+export function normalizeGuiReadyConfig(config: CamillaDSPConfig): GuiReadyCamillaDSPConfig {
+  return {
+    title: config.title,
+    description: config.description,
+    devices: config.devices || {
+      samplerate: 48000,
+      chunksize: 1024,
+      capture: { channels: 2 },
+      playback: { channels: 2 },
+    },
+    filters: config.filters || {},
+    mixers: config.mixers || {},
+    pipeline: config.pipeline || [],
+    processors: config.processors || {},
+  };
+}
 
 // Runtime-specific types (not part of canonical DSP config)
 interface DSPResponse {
@@ -682,33 +703,8 @@ export class CamillaDSP {
     return true;
   }
 
-  /**
-   * Get default/normalized config
-   * Preserves all data from CamillaDSP, only fills missing required fields
-   * Returns GUI-ready config where filters/mixers/processors/pipeline are always present
-   */
   private getDefaultConfig(config: any): GuiReadyCamillaDSPConfig {
-    return {
-      // Preserve title/description if present
-      title: config.title,
-      description: config.description,
-      
-      // Preserve devices or use default
-      devices: config.devices || {
-        samplerate: 48000,
-        chunksize: 1024,
-        capture: { channels: 2 },
-        playback: { channels: 2 },
-      },
-      
-      // Preserve filters, mixers, pipeline as-is (even if empty)
-      filters: config.filters || {},
-      mixers: config.mixers || {},
-      pipeline: config.pipeline || [],
-      
-      // Ensure processors exists
-      processors: config.processors || {},
-    };
+    return normalizeGuiReadyConfig(config);
   }
 
   /**

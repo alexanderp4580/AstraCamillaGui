@@ -181,7 +181,7 @@ Uses VizLayoutManager for responsive layout with smart expansion/collapse behavi
 
               <rect class="eqBlock" x="72" y="20" width="46" height="20" rx="3"/>
               <path class="eqBlockCurve" d="M76 30 C80 30 83 23 95 23 C107 23 110 30 114 30"/>
-              <text class="eqBlockLabel" x="95" y="17">EQ</text>
+              <text class="eqBlockLabel" style="dominant-baseline: middle;" x="95" y="17">EQ</text>
 
               <line class="sigLine" x1="118" y1="30" x2="184" y2="30"/>
               <line class="sigSegActive post" x1="118" y1="30" x2="184" y2="30"/>
@@ -511,7 +511,7 @@ Uses VizLayoutManager for responsive layout with smart expansion/collapse behavi
     min-width: 0;
   }
 
-  .vizViewport.constrained {
+  .vizViewport:global(.constrained) {
     overflow-x: auto;
   }
 
@@ -540,11 +540,11 @@ Uses VizLayoutManager for responsive layout with smart expansion/collapse behavi
     border-bottom-right-radius: 10px;
   }
 
-  .vizViewport.hasLeftOverflow .edgeFade.left {
+  .vizViewport:global(.hasLeftOverflow) .edgeFade.left {
     opacity: 1;
   }
 
-  .vizViewport.hasRightOverflow .edgeFade.right {
+  .vizViewport:global(.hasRightOverflow) .edgeFade.right {
     opacity: 1;
   }
 
@@ -967,7 +967,6 @@ Uses VizLayoutManager for responsive layout with smart expansion/collapse behavi
     font-size: 7px;
     font-family: system-ui;
     text-anchor: middle;
-    dominant-baseline: middle;
     letter-spacing: 0.1em;
     text-transform: uppercase;
   }

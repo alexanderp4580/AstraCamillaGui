@@ -3,7 +3,7 @@
  * Makes enable/disable consistent between EQ and Pipeline editors
  */
 
-import type { CamillaDSPConfig } from './camillaDSP';
+import type { GuiReadyCamillaDSPConfig } from './camillaDSP';
 import { normalizePipelineStep, type PipelineStepNormalized } from './camillaTypes';
 import {
   markFilterDisabled,
@@ -18,10 +18,10 @@ import {
  * Removes filterName from all Filter steps and records locations in overlay
  */
 export function disableFilterEverywhere(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   filterName: string
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   // Find all Filter steps that contain this filterName
   for (let stepIndex = 0; stepIndex < updated.pipeline.length; stepIndex++) {
@@ -69,10 +69,10 @@ export function disableFilterEverywhere(
  * Uses overlay locations to restore into each step at its original index
  */
 export function enableFilterEverywhere(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   filterName: string
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   // Get all stored locations for this filter
   const locations = getDisabledFilterLocations(filterName);
@@ -132,7 +132,7 @@ export function enableFilterEverywhere(
  * (Helper for validation)
  */
 export function isFilterEnabledEverywhere(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   filterName: string
 ): boolean {
   // A filter is enabled if it's NOT in the disabled overlay

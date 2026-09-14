@@ -3,7 +3,7 @@
  * Validates mixer routing to prevent silent channel loss and warn about summing
  */
 
-import type { MixerDefinition } from './camillaDSP';
+import type { Mixer } from './camillaDSP';
 
 /**
  * Validation result for a single mixer destination
@@ -32,7 +32,7 @@ export interface MixerValidationResult {
  * - Warning: destination has >1 unmuted source (summing)
  * - Warning: if summing and any unmuted source has gain > 0 dB
  */
-export function validateMixerRouting(mixer: MixerDefinition): MixerValidationResult {
+export function validateMixerRouting(mixer: Mixer): MixerValidationResult {
   const perDest: MixerDestValidation[] = [];
   let hasErrors = false;
 

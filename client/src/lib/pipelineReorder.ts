@@ -3,7 +3,7 @@
  * Pure functions for reordering pipeline blocks and filter names
  */
 
-import type { CamillaDSPConfig } from './camillaDSP';
+import type { GuiReadyCamillaDSPConfig } from './camillaDSP';
 
 /**
  * Filter item for reordering (includes disabled state)
@@ -41,11 +41,11 @@ export function arrayMove<T>(arr: T[], fromIndex: number, toIndex: number): T[] 
  * Returns a new config with pipeline reordered
  */
 export function reorderPipeline(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   fromIndex: number,
   toIndex: number
-): CamillaDSPConfig {
-  const updatedConfig = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updatedConfig = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   updatedConfig.pipeline = arrayMove(updatedConfig.pipeline, fromIndex, toIndex);
   return updatedConfig;
 }
@@ -90,12 +90,12 @@ export function reorderFiltersWithDisabled(
  * Returns a new config with filter names reordered
  */
 export function reorderFilterNamesInStep(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   stepIndex: number,
   fromIndex: number,
   toIndex: number
-): CamillaDSPConfig {
-  const updatedConfig = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updatedConfig = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   const step = updatedConfig.pipeline[stepIndex];
 
   if (!step || step.type !== 'Filter') {

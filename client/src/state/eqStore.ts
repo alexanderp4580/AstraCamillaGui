@@ -7,7 +7,7 @@
 import { writable, derived, get } from 'svelte/store';
 import type { EqBand } from '../dsp/filterResponse';
 import { generateCurvePath, generateBandCurvePath } from '../ui/rendering/EqSvgRenderer';
-import type { CamillaDSP, CamillaDSPConfig } from '../lib/camillaDSP';
+import type { CamillaDSP, GuiReadyCamillaDSPConfig } from '../lib/camillaDSP';
 import {
   extractEqBandsFromConfig,
   applyEqBandsToConfig,
@@ -39,7 +39,7 @@ export const uploadStatus = writable<UploadStatus>({ state: 'idle' });
 export const preampGain = writable<number>(0); // Master-band gain (±24 dB)
 
 // Internal state (not exported as stores)
-let lastConfig: CamillaDSPConfig | null = null;
+let lastConfig: GuiReadyCamillaDSPConfig | null = null;
 let extractedData: ExtractedEqData | null = null;
 
 // Debounced upload function
@@ -72,7 +72,7 @@ const debouncedUpload = debounceCancelable(async () => {
 
     if (success) {
       // Get confirmed config from DSP instance (post-download)
-      const confirmedConfig = dspInstance.config! as CamillaDSPConfig;
+      const confirmedConfig = dspInstance.config! as GuiReadyCamillaDSPConfig;
       
       // Store confirmed config as new baseline
       lastConfig = confirmedConfig;
@@ -121,7 +121,7 @@ const debouncedUpload = debounceCancelable(async () => {
         const resynced = await dspInstance.downloadConfig();
         if (resynced && dspInstance.config) {
           console.warn('Upload failed, resynced with DSP config');
-          const resyncedConfig = dspInstance.config as CamillaDSPConfig;
+          const resyncedConfig = dspInstance.config as GuiReadyCamillaDSPConfig;
           lastConfig = resyncedConfig;
           updateDspConfig(resyncedConfig);
           
@@ -149,7 +149,7 @@ const debouncedUpload = debounceCancelable(async () => {
 /**
  * Initialize EQ store from config (uses global dspStore)
  */
-export function initializeFromConfig(config: CamillaDSPConfig): boolean {
+export function initializeFromConfig(config: GuiReadyCamillaDSPConfig): boolean {
   if (!config) {
     console.error('No config provided');
     return false;
@@ -278,7 +278,7 @@ export async function toggleBandEnabled(index: number): Promise<void> {
 
   try {
     // Toggle by disabling/enabling everywhere in pipeline
-    let updatedConfig: CamillaDSPConfig;
+    let updatedConfig: GuiReadyCamillaDSPConfig;
     
     if (isCurrentlyEnabled) {
       // Disable: remove from pipeline steps, add to overlay
@@ -381,7 +381,7 @@ export async function startSoloEditSession(bandIndex: number): Promise<void> {
   // Deep-clone the config so we can patch pipeline names[] directly.
   // This avoids writing to the disabled-filters localStorage overlay, which would
   // cause extractEqBandsFromConfig to include the muted bands in the band list.
-  const updatedConfig = JSON.parse(JSON.stringify(lastConfig)) as CamillaDSPConfig;
+  const updatedConfig = JSON.parse(JSON.stringify(lastConfig)) as GuiReadyCamillaDSPConfig;
   const pipeline = (updatedConfig.pipeline as any[] | undefined) ?? [];
 
   // Snapshot of each Filter step's original names[] so we can restore later
@@ -442,7 +442,7 @@ export async function endSoloEditSession(): Promise<void> {
   }
 
   // Restore pipeline names[] from snapshot
-  const updatedConfig = JSON.parse(JSON.stringify(lastConfig)) as CamillaDSPConfig;
+  const updatedConfig = JSON.parse(JSON.stringify(lastConfig)) as GuiReadyCamillaDSPConfig;
   const pipeline = (updatedConfig.pipeline as any[] | undefined) ?? [];
 
   for (const snap of soloSnapshot) {

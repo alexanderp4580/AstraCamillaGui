@@ -25,6 +25,8 @@
     tokenPointerMove: { event: PointerEvent };
     tokenPointerUp: { event: PointerEvent };
     tokenWheel: { bandIndex: number; event: WheelEvent };
+    tokenKeyDown: { bandIndex: number; event: KeyboardEvent };
+    tokenFocus: { bandIndex: number };
   }>();
 
   // Event handlers that dispatch to parent
@@ -42,6 +44,18 @@
 
   function handleTokenWheel(event: WheelEvent, bandIndex: number) {
     dispatch('tokenWheel', { bandIndex, event });
+  }
+
+  // Keyboard equivalent of drag: arrow keys move freq/gain, parent owns the step logic
+  function handleTokenKeyDown(event: KeyboardEvent, bandIndex: number) {
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) {
+      event.preventDefault();
+      dispatch('tokenKeyDown', { bandIndex, event });
+    }
+  }
+
+  function handleTokenFocus(bandIndex: number) {
+    dispatch('tokenFocus', { bandIndex });
   }
 </script>
 
@@ -141,10 +155,19 @@
         class:shift-mode={shiftPressed}
         data-band-index={i}
         data-selected={selectedBandIndex === i}
+        role="slider"
+        tabindex="0"
+        aria-label={`Band ${i + 1}`}
+        aria-valuenow={band.freq}
+        aria-valuemin={20}
+        aria-valuemax={20000}
+        aria-valuetext={`${freqNum} Hz, Q ${qLabel}`}
         on:pointerdown={(e) => handleTokenPointerDown(e, i)}
         on:pointermove={handleTokenPointerMove}
         on:pointerup={handleTokenPointerUp}
         on:wheel={(e) => handleTokenWheel(e, i)}
+        on:keydown={(e) => handleTokenKeyDown(e, i)}
+        on:focus={() => handleTokenFocus(i)}
       />
       
       <!-- Token ring (visible 3px ring: 20px outer, 17px inner) -->

@@ -3,7 +3,7 @@
  * Pure functions for adding and removing entire pipeline steps
  */
 
-import type { CamillaDSPConfig, PipelineStep} from './camillaDSP';
+import type { GuiReadyCamillaDSPConfig, PipelineStep} from './camillaDSP';
 import { normalizePipelineStep } from './camillaTypes';
 
 /**
@@ -13,11 +13,11 @@ import { normalizePipelineStep } from './camillaTypes';
  * @param step The pipeline step to insert
  */
 export function insertPipelineStep(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   index: number,
   step: PipelineStep
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   // Ensure pipeline exists
   if (!updated.pipeline) {
@@ -38,10 +38,10 @@ export function insertPipelineStep(
  * @param stepIndex Index of the step to remove
  */
 export function removePipelineStep(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   stepIndex: number
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   if (!updated.pipeline || stepIndex < 0 || stepIndex >= updated.pipeline.length) {
     throw new Error(`Invalid step index: ${stepIndex}`);
@@ -59,11 +59,11 @@ export function removePipelineStep(
  * @param bypassed New bypass state
  */
 export function setPipelineStepBypassed(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   stepIndex: number,
   bypassed: boolean
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   if (!updated.pipeline || stepIndex < 0 || stepIndex >= updated.pipeline.length) {
     throw new Error(`Invalid step index: ${stepIndex}`);
@@ -81,11 +81,11 @@ export function setPipelineStepBypassed(
  * @param channels Array of channel numbers
  */
 export function setFilterStepChannels(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   stepIndex: number,
   channels: number[]
-): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   if (!updated.pipeline || stepIndex < 0 || stepIndex >= updated.pipeline.length) {
     throw new Error(`Invalid step index: ${stepIndex}`);
@@ -107,7 +107,7 @@ export function setFilterStepChannels(
  * @param config The config (used to validate channels)
  * @param channels Array of channel numbers (defaults to [0])
  */
-export function createNewFilterStep(config: CamillaDSPConfig, channels?: number[]): PipelineStep {
+export function createNewFilterStep(config: GuiReadyCamillaDSPConfig, channels?: number[]): PipelineStep {
   // Use provided channels or default to [0]
   const stepChannels = channels && channels.length > 0 ? channels : [0];
   
@@ -126,7 +126,7 @@ export function createNewFilterStep(config: CamillaDSPConfig, channels?: number[
 /**
  * Generate a unique mixer name that doesn't collide with existing mixers
  */
-function generateUniqueMixerName(config: CamillaDSPConfig): string {
+function generateUniqueMixerName(config: GuiReadyCamillaDSPConfig): string {
   const existingNames = Object.keys(config.mixers || {});
   let counter = 1;
   let name = `mixer_${counter}`;
@@ -144,7 +144,7 @@ function generateUniqueMixerName(config: CamillaDSPConfig): string {
  * Returns both the mixer definition and the pipeline step
  * Mixer is a 2→2 passthrough by default
  */
-export function createNewMixerBlock(config: CamillaDSPConfig): {
+export function createNewMixerBlock(config: GuiReadyCamillaDSPConfig): {
   mixerName: string;
   mixerDef: any;
   step: PipelineStep;
@@ -186,7 +186,7 @@ export function createNewMixerBlock(config: CamillaDSPConfig): {
 /**
  * Generate a unique processor name that doesn't collide with existing processors
  */
-function generateUniqueProcessorName(config: CamillaDSPConfig, baseName: string): string {
+function generateUniqueProcessorName(config: GuiReadyCamillaDSPConfig, baseName: string): string {
   const existingNames = Object.keys(config.processors || {});
   
   // If base name is available, use it
@@ -214,7 +214,7 @@ function generateUniqueProcessorName(config: CamillaDSPConfig, baseName: string)
  * @param baseName The base name for the processor (will be made unique)
  */
 export function createNewProcessorBlock(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   processorType: string,
   baseName: string
 ): {
@@ -273,8 +273,8 @@ export function createNewProcessorBlock(
  * Removes definitions that are no longer referenced in the pipeline
  * @param config The config to clean
  */
-export function cleanupOrphanDefinitions(config: CamillaDSPConfig): CamillaDSPConfig {
-  const updated = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+export function cleanupOrphanDefinitions(config: GuiReadyCamillaDSPConfig): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   
   // Track referenced mixers
   const referencedMixers = new Set<string>();
@@ -350,7 +350,7 @@ export function cleanupOrphanDefinitions(config: CamillaDSPConfig): CamillaDSPCo
  * Get available channels from config
  * Returns array of channel numbers [0, 1, ...n-1]
  */
-export function getAvailableChannels(config: CamillaDSPConfig): number[] {
+export function getAvailableChannels(config: GuiReadyCamillaDSPConfig): number[] {
   // Try playback channels first, then capture, default to 2
   const numChannels = 
     (config.devices?.playback as any)?.channels ?? 

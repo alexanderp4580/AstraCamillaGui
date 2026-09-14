@@ -4,7 +4,7 @@
  * Uses EQ-style debounced upload pattern
  */
 
-import type { CamillaDSPConfig } from '../lib/camillaDSP';
+import type { GuiReadyCamillaDSPConfig } from '../lib/camillaDSP';
 import { getDspInstance, updateConfig as updateDspConfig } from './dspStore';
 import { initializeFromConfig } from './eqStore';
 import { putLatestState } from '../lib/api';
@@ -44,7 +44,7 @@ function notifyStatus(status: PipelineUploadStatus): void {
 /**
  * Debounced upload function
  */
-const debouncedUpload = debounceCancelable(async (config: CamillaDSPConfig) => {
+const debouncedUpload = debounceCancelable(async (config: GuiReadyCamillaDSPConfig) => {
   const dspInstance = getDspInstance();
   if (!dspInstance) {
     notifyStatus({ state: 'error', message: 'DSP not connected' });
@@ -109,7 +109,7 @@ const debouncedUpload = debounceCancelable(async (config: CamillaDSPConfig) => {
 /**
  * Commit pipeline config change (triggers debounced upload)
  */
-export function commitPipelineConfigChange(config: CamillaDSPConfig): void {
+export function commitPipelineConfigChange(config: GuiReadyCamillaDSPConfig): void {
   debouncedUpload.call(config);
 }
 

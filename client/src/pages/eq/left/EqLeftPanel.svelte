@@ -211,9 +211,6 @@
     align-items: center;
   }
 
-  .eq-zone-spacer {
-  }
-
   .freq-label {
     position: absolute;
     transform: translateX(-50%);
@@ -234,6 +231,4 @@
     min-width: 0;
   }
 
-  .viz-options-spacer {
-  }
 </style>

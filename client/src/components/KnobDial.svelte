@@ -4,11 +4,14 @@
   export let value: number; // frequency (20-20000) or Q (0.1-10) or custom range
   export let mode: 'frequency' | 'q' = 'frequency';
   export let size: number = 32; // knob diameter in px
-  
+  export let label: string | undefined = undefined; // aria-label; falls back to mode
+
   // Optional: custom range (overrides mode-based defaults)
   export let min: number | undefined = undefined;
   export let max: number | undefined = undefined;
   export let scale: 'linear' | 'log' = 'linear';
+
+  $: ariaLabel = label ?? (mode === 'frequency' ? 'Frequency' : 'Q');
 
   const dispatch = createEventDispatcher<{ change: { value: number } }>();
 
@@ -132,22 +135,59 @@
 
   function handlePointerUp(event: PointerEvent) {
     if (!isDragging) return;
-    
+
     const target = event.currentTarget as SVGElement;
     target.releasePointerCapture(event.pointerId);
     isDragging = false;
   }
+
+  // Keyboard equivalent of drag: each arrow press = a fixed number of "drag pixels"
+  function handleKeyDown(event: KeyboardEvent) {
+    const pixelSteps: Record<string, number> = {
+      ArrowUp: 5,
+      ArrowRight: 5,
+      ArrowDown: -5,
+      ArrowLeft: -5,
+    };
+    const deltaY = pixelSteps[event.key];
+    if (deltaY === undefined) return;
+
+    event.preventDefault();
+    const sensitivity = event.shiftKey ? 0.2 : 1.0;
+    const { min, max, scale } = rangeConfig;
+
+    let newValue: number;
+    if (scale === 'log') {
+      const factor = Math.pow(1.01, deltaY * sensitivity);
+      newValue = value * factor;
+    } else {
+      const range = max - min;
+      const baseStep = range / 100;
+      const step = event.shiftKey ? baseStep * 0.2 : baseStep;
+      newValue = value + (deltaY * step);
+    }
+
+    newValue = Math.min(max, Math.max(min, newValue));
+    dispatch('change', { value: newValue });
+  }
 </script>
 
-<svg 
-  class="knob-dial" 
+<svg
+  class="knob-dial"
   class:dragging={isDragging}
-  viewBox="0 0 {viewBoxSize} {viewBoxSize}" 
-  width={viewBoxSize} 
+  viewBox="0 0 {viewBoxSize} {viewBoxSize}"
+  width={viewBoxSize}
   height={viewBoxSize}
+  role="slider"
+  tabindex="0"
+  aria-label={ariaLabel}
+  aria-valuenow={value}
+  aria-valuemin={rangeConfig.min}
+  aria-valuemax={rangeConfig.max}
   on:pointerdown={handlePointerDown}
   on:pointermove={handlePointerMove}
   on:pointerup={handlePointerUp}
+  on:keydown={handleKeyDown}
 >
   <!-- Knob body (neutral) -->
   <circle

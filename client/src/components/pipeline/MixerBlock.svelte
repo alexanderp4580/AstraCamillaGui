@@ -1,13 +1,13 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { MixerBlockVm } from '../../lib/pipelineViewModel';
-  import type { MixerDefinition } from '../../lib/camillaDSP';
+  import type { Mixer } from '../../lib/camillaDSP';
   import type { MixerValidationResult } from '../../lib/mixerRoutingValidation';
   import KnobDial from '../KnobDial.svelte';
 
   export let block: MixerBlockVm;
   export let expanded: boolean = false;
-  export let mixer: MixerDefinition | null = null;
+  export let mixer: Mixer | null = null;
   export let validation: MixerValidationResult | null = null;
 
   const dispatch = createEventDispatcher<{
@@ -142,14 +142,14 @@
                   
                   <div class="source-gain">
                     <KnobDial
-                      value={source.gain}
+                      value={source.gain ?? 0}
                       min={-150}
                       max={50}
                       scale="linear"
                       size={24}
                       on:change={(e) => handleGainChange(destIndex, sourceIndex, e)}
                     />
-                    <span class="gain-value">{source.gain.toFixed(1)} dB</span>
+                    <span class="gain-value">{(source.gain ?? 0).toFixed(1)} dB</span>
                   </div>
 
                   <label class="source-toggle">

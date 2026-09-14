@@ -3,19 +3,19 @@
  * Pure functions for manipulating mixer definitions in pipeline configs
  */
 
-import type { CamillaDSPConfig } from './camillaDSP';
+import type { GuiReadyCamillaDSPConfig } from './camillaDSP';
 
 /**
  * Set gain for a specific source in a mixer destination
  */
 export function setMixerSourceGain(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   mixerName: string,
   destIndex: number,
   sourceIndex: number,
   gain: number
-): CamillaDSPConfig {
-  const updatedConfig = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updatedConfig = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   const mixer = updatedConfig.mixers[mixerName];
 
   if (!mixer || !mixer.mapping || !mixer.mapping[destIndex]) {
@@ -38,12 +38,12 @@ export function setMixerSourceGain(
  * Toggle mute state for a specific source in a mixer destination
  */
 export function toggleMixerSourceMute(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   mixerName: string,
   destIndex: number,
   sourceIndex: number
-): CamillaDSPConfig {
-  const updatedConfig = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updatedConfig = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   const mixer = updatedConfig.mixers[mixerName];
 
   if (!mixer || !mixer.mapping || !mixer.mapping[destIndex]) {
@@ -64,12 +64,12 @@ export function toggleMixerSourceMute(
  * Toggle inverted state for a specific source in a mixer destination
  */
 export function toggleMixerSourceInverted(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   mixerName: string,
   destIndex: number,
   sourceIndex: number
-): CamillaDSPConfig {
-  const updatedConfig = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updatedConfig = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   const mixer = updatedConfig.mixers[mixerName];
 
   if (!mixer || !mixer.mapping || !mixer.mapping[destIndex]) {
@@ -90,12 +90,12 @@ export function toggleMixerSourceInverted(
  * Toggle mute state for a destination
  */
 export function setMixerDestMute(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   mixerName: string,
   destIndex: number,
   mute: boolean
-): CamillaDSPConfig {
-  const updatedConfig = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updatedConfig = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   const mixer = updatedConfig.mixers[mixerName];
 
   if (!mixer || !mixer.mapping || !mixer.mapping[destIndex]) {
@@ -111,12 +111,12 @@ export function setMixerDestMute(
  * Add a source to a mixer destination
  */
 export function addMixerSource(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   mixerName: string,
   destIndex: number,
   channel: number
-): CamillaDSPConfig {
-  const updatedConfig = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updatedConfig = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   const mixer = updatedConfig.mixers[mixerName];
 
   if (!mixer || !mixer.mapping || !mixer.mapping[destIndex]) {
@@ -129,7 +129,7 @@ export function addMixerSource(
   }
 
   // Check if source with this channel already exists
-  const exists = sources.some(src => src.channel === channel);
+  const exists = sources.some((src: any) => src.channel === channel);
   if (exists) {
     throw new Error(`Source with channel ${channel} already exists in destination ${destIndex}`);
   }
@@ -150,12 +150,12 @@ export function addMixerSource(
  * Remove a source from a mixer destination
  */
 export function removeMixerSource(
-  config: CamillaDSPConfig,
+  config: GuiReadyCamillaDSPConfig,
   mixerName: string,
   destIndex: number,
   sourceIndex: number
-): CamillaDSPConfig {
-  const updatedConfig = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
+): GuiReadyCamillaDSPConfig {
+  const updatedConfig = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
   const mixer = updatedConfig.mixers[mixerName];
 
   if (!mixer || !mixer.mapping || !mixer.mapping[destIndex]) {
