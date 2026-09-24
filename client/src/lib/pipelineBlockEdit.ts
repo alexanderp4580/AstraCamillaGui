@@ -250,6 +250,22 @@ export function createNewProcessorBlock(
         release: 0.1,
       },
     };
+  } else if (processorType === 'NightMode') {
+    // Defaults mirror AstraCamillaDsp's exampleconfigs/nightmode.yml
+    processorDef = {
+      type: 'NightMode',
+      parameters: {
+        channels: 2,
+        amount: 100,
+        max_attenuation: 28,
+        bass_reduction: 10,
+        headroom: 0,
+        ratio: 12.0,
+        transient_softening: 100,
+        dialogue_protection: 60,
+        presence_gain: 0.0,
+      },
+    };
   } else {
     // Unknown processor type: create minimal definition with type field
     processorDef = {

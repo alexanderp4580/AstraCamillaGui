@@ -94,13 +94,17 @@
     const wouldFitRight = bandRight + gap + rect.width <= window.innerWidth - margin;
     side = wouldFitRight ? 'right' : 'left';
     
-    // Horizontal: place to left or right of band with gap
+    // Horizontal: place to left or right of band with gap, then clamp into
+    // the viewport — on a narrow screen neither side may have room for the
+    // full popup width, so the clamp (not the side choice) is what actually
+    // keeps it on-screen.
     if (side === 'right') {
       leftPx = bandRight + gap;
     } else {
       leftPx = bandLeft - gap - rect.width;
     }
-    
+    leftPx = Math.max(margin, Math.min(leftPx, window.innerWidth - rect.width - margin));
+
     // Vertical: center on icon, but clamp to viewport
     const desiredTop = iconCenterY - rect.height / 2;
     topPx = Math.max(
@@ -230,7 +234,10 @@
 
   .picker-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    /* 2 columns keeps the popup narrow enough to fit beside a band control
+       even on a phone-width screen (4 columns needed ~260px+, routinely
+       wider than the space available on either side). */
+    grid-template-columns: repeat(2, 1fr);
     /* gap: 0.375rem; */
   }
 

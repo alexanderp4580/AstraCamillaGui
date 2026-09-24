@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { ProcessorBlockVm } from '../../lib/pipelineViewModel';
-  import KnobDial from '../KnobDial.svelte';
+  import HSlider from '../HSlider.svelte';
 
   export let block: ProcessorBlockVm;
   export let expanded: boolean = false;
@@ -41,8 +41,16 @@
         { label: 'Attack', value: `${formatParam(params.attack)} s` },
         { label: 'Release', value: `${formatParam(params.release)} s` },
       ];
+    } else if (type === 'NightMode') {
+      return [
+        { label: 'Channels', value: String(params.channels || '?') },
+        { label: 'Amount', value: formatParam(params.amount ?? 100) },
+        { label: 'Max Attenuation', value: `${formatParam(params.max_attenuation ?? 28)} dB` },
+        { label: 'Bass Reduction', value: `${formatParam(params.bass_reduction ?? 10)} dB` },
+        { label: 'Dialogue Protection', value: formatParam(params.dialogue_protection ?? 60) },
+      ];
     }
-    
+
     return [];
   }
   
@@ -84,8 +92,19 @@
         { key: 'attack', label: 'Attack', value: Number(params.attack ?? 0.01), unit: 's', min: 0, max: 0.5 },
         { key: 'release', label: 'Release', value: Number(params.release ?? 0.1), unit: 's', min: 0, max: 2.0 },
       ];
+    } else if (type === 'NightMode') {
+      return [
+        { key: 'amount', label: 'Amount', value: Number(params.amount ?? 100), unit: '', min: 0, max: 100 },
+        { key: 'max_attenuation', label: 'Max Attenuation', value: Number(params.max_attenuation ?? 28), unit: 'dB', min: 0, max: 60 },
+        { key: 'bass_reduction', label: 'Bass Reduction', value: Number(params.bass_reduction ?? 10), unit: 'dB', min: 0, max: 24 },
+        { key: 'headroom', label: 'Headroom', value: Number(params.headroom ?? 0), unit: 'dB', min: 0, max: 24 },
+        { key: 'ratio', label: 'Ratio', value: Number(params.ratio ?? 12), unit: ':1', min: 1, max: 20 },
+        { key: 'transient_softening', label: 'Transient Softening', value: Number(params.transient_softening ?? 100), unit: '', min: 0, max: 100 },
+        { key: 'dialogue_protection', label: 'Dialogue Protection', value: Number(params.dialogue_protection ?? 60), unit: '', min: 0, max: 100 },
+        { key: 'presence_gain', label: 'Presence Gain', value: Number(params.presence_gain ?? 0), unit: 'dB', min: -12, max: 12 },
+      ];
     }
-    
+
     return [];
   }
   
@@ -139,42 +158,32 @@
             </label>
           </div>
           
-          <!-- Parameter controls in grid layout -->
+          <!-- Parameter controls, one full-width slider per row -->
           <div class="param-grid">
             {#each editableParams as param}
-              <div class="param-tile">
-                <span class="param-tile-label">{param.label}</span>
-                <div class="param-tile-control">
-                  <KnobDial
-                    value={param.value}
-                    min={param.min}
-                    max={param.max}
-                    scale="linear"
-                    size={32}
-                    on:change={(e) => handleParamChange(param.key, e.detail.value)}
-                  />
-                </div>
-                <span class="param-tile-value">
-                  {param.value.toFixed(2)}{param.unit}
-                </span>
-              </div>
+              <HSlider
+                label={param.label}
+                value={param.value}
+                min={param.min}
+                max={param.max}
+                scale="linear"
+                formatValue={(v) => `${v.toFixed(2)}${param.unit}`}
+                on:change={(e) => handleParamChange(param.key, e.detail.value)}
+              />
             {/each}
-            
-            <!-- Channels tile (numeric input) -->
+
             {#if channelsValue !== undefined}
-              <div class="param-tile">
-                <span class="param-tile-label">Channels</span>
-                <div class="param-tile-control">
-                  <input
-                    id="proc-channels-{block.blockId}"
-                    type="number"
-                    min="1"
-                    step="1"
-                    value={channelsValue}
-                    on:input={(e) => handleParamChange('channels', Number(e.currentTarget.value))}
-                    class="channels-input"
-                  />
-                </div>
+              <div class="channels-row">
+                <span class="channels-label">Channels</span>
+                <input
+                  id="proc-channels-{block.blockId}"
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={channelsValue}
+                  on:input={(e) => handleParamChange('channels', Number(e.currentTarget.value))}
+                  class="channels-input"
+                />
               </div>
             {/if}
           </div>
@@ -412,54 +421,30 @@
     cursor: pointer;
   }
   
-  /* Grid layout for parameters */
+  /* Vertical stack of full-width sliders — one control per row, works the
+     same from phone width up, no fixed-width tiles to overflow/clip. */
   .param-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 1rem;
-    margin-top: 0.5rem;
-  }
-  
-  .param-tile {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem;
-    background: rgba(0, 0, 0, 0.2);
-    border: 1px solid rgba(212, 164, 255, 0.2);
-    border-radius: 4px;
-    transition: all 0.15s ease;
+    gap: 0.625rem;
+    margin-top: 0.5rem;
+    width: 100%;
   }
-  
-  .param-tile:hover {
-    background: rgba(0, 0, 0, 0.3);
-    border-color: rgba(212, 164, 255, 0.3);
-  }
-  
-  .param-tile-label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--ui-text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    text-align: center;
-  }
-  
-  .param-tile-control {
+
+  .channels-row {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 0.625rem;
   }
-  
-  .param-tile-value {
-    font-family: 'Courier New', monospace;
-    font-size: 0.8125rem;
-    color: var(--ui-text);
-    text-align: center;
-    min-height: 1.25rem;
+
+  .channels-label {
+    flex: 0 0 2.75rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--ui-text-muted);
+    letter-spacing: 0.02em;
   }
-  
+
   .channels-input {
     width: 60px;
     padding: 0.5rem;

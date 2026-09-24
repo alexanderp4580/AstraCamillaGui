@@ -112,41 +112,37 @@
 </div>
 
 <style>
-  /* Left side: participates in parent's 3 rows */
   .eq-left {
-    display: grid;
-    grid-template-rows: subgrid;
-    grid-row: 1 / span 3;
-    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
     min-width: 0;
   }
 
-  .eq-left-top {
-    align-self: end;
-  }
-
   .eq-left-middle {
-    min-height: 0;
-    height: 100%;
+    width: 100%;
   }
 
-  .eq-left-bottom {
-    align-self: start;
-  }
-
-  /* Octave Indicators Row */
+  /* Octave Indicators Row — horizontally scrollable so 9 columns never
+     squish/overlap on narrow viewports instead of forcing a fixed grid. */
   .eq-octaves-area {
     display: grid;
     grid-template-columns: 1fr 44px;
     align-items: end;
+    min-width: 0;
   }
 
   .eq-octaves {
     padding: 0 14px;
-    display: grid;
-    grid-template-columns: repeat(9, 1fr);
+    display: flex;
     align-items: center;
     gap: 6px;
+    overflow-x: auto;
+    min-width: 0;
+  }
+
+  .eq-octaves > * {
+    flex: 1 0 44px;
   }
 
   .eq-octave-cell {
@@ -169,21 +165,25 @@
     background: transparent;
   }
 
-  /* Frequency Region Labels Row */
+  /* Frequency Region Labels Row — horizontally scrollable, same reasoning
+     as the octave row above. */
   .eq-regions-area {
     display: grid;
     grid-template-columns: 1fr 44px;
+    min-width: 0;
   }
 
   .eq-regions {
     padding: 0 14px;
-    display: grid;
-    grid-template-columns: repeat(9, 1fr);
+    display: flex;
     align-items: center;
     gap: 6px;
+    overflow-x: auto;
+    min-width: 0;
   }
 
   .eq-region-cell {
+    flex: 1 0 64px;
     height: 22px;
     display: flex;
     align-items: center;
@@ -195,7 +195,8 @@
     font-weight: 600;
     letter-spacing: 0.02em;
     border-radius: 2px;
-    background: color-mix(in oklab, var(--ui-panel) 70%, #041b1d 30%);    
+    background: color-mix(in oklab, var(--ui-panel) 70%, #041b1d 30%);
+    white-space: nowrap;
   }
 
   /* Frequency Scale Row */

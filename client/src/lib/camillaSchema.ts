@@ -117,7 +117,8 @@ export type Filter =
 // 4. Processor Block
 export type Processor =
   | { type: "Compressor"; parameters: CompressorParameters; description?: string }
-  | { type: "NoiseGate"; parameters: NoiseGateParameters; description?: string };
+  | { type: "NoiseGate"; parameters: NoiseGateParameters; description?: string }
+  | { type: "NightMode"; parameters: NightModeParameters; description?: string };
 
 // 5. Pipeline Block
 export type PipelineStep =
@@ -279,6 +280,24 @@ export interface NoiseGateParameters {
   release: PrcFmt;
   attenuation: PrcFmt;
   threshold: PrcFmt;
+}
+
+// 15. NightMode Parameters (AstraCamillaDsp fork extension, not upstream CamillaDSP —
+// see NIGHT-MODE-PLAN.md/NIGHT-MODE-HANDOFF.md in that repo). All fields but
+// `channels` are optional with defaults applied DSP-side; only the params exposed
+// in the GUI as editable controls are listed here.
+export interface NightModeParameters {
+  channels: number;
+  monitor_channels?: number[];
+  process_channels?: number[];
+  amount?: PrcFmt;
+  max_attenuation?: PrcFmt;
+  bass_reduction?: PrcFmt;
+  headroom?: PrcFmt;
+  ratio?: PrcFmt;
+  transient_softening?: PrcFmt;
+  dialogue_protection?: PrcFmt;
+  presence_gain?: PrcFmt;
 }
 
 // 15. DiffEq Parameters

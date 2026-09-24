@@ -117,8 +117,69 @@ export function setNoiseGateParam(
       clampedValue = Math.round(value * 100) / 100;
       break;
   }
-  
+
   processor.parameters[param] = clampedValue;
-  
+
+  return updated;
+}
+
+/**
+ * Set night mode processor parameter
+ */
+export function setNightModeParam(
+  config: GuiReadyCamillaDSPConfig,
+  processorName: string,
+  param:
+    | 'amount'
+    | 'max_attenuation'
+    | 'bass_reduction'
+    | 'headroom'
+    | 'ratio'
+    | 'transient_softening'
+    | 'dialogue_protection'
+    | 'presence_gain'
+    | 'channels',
+  value: number
+): GuiReadyCamillaDSPConfig {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
+
+  if (!updated.processors || !updated.processors[processorName]) {
+    throw new Error(`Processor "${processorName}" not found`);
+  }
+
+  const processor = updated.processors[processorName];
+  if (processor.type !== 'NightMode') {
+    throw new Error(`Processor "${processorName}" is not a NightMode`);
+  }
+
+  // Apply the same min/max bounds shown in the editor UI, rounded to 2 decimals
+  let clampedValue = value;
+
+  switch (param) {
+    case 'amount':
+    case 'transient_softening':
+    case 'dialogue_protection':
+      clampedValue = Math.round(Math.min(100, Math.max(0, value)) * 100) / 100;
+      break;
+    case 'max_attenuation':
+      clampedValue = Math.round(Math.min(60, Math.max(0, value)) * 100) / 100;
+      break;
+    case 'bass_reduction':
+    case 'headroom':
+      clampedValue = Math.round(Math.min(24, Math.max(0, value)) * 100) / 100;
+      break;
+    case 'ratio':
+      clampedValue = Math.round(Math.min(20, Math.max(1, value)) * 100) / 100;
+      break;
+    case 'presence_gain':
+      clampedValue = Math.round(Math.min(12, Math.max(-12, value)) * 100) / 100;
+      break;
+    case 'channels':
+      clampedValue = Math.max(1, Math.floor(value));
+      break;
+  }
+
+  processor.parameters[param] = clampedValue;
+
   return updated;
 }

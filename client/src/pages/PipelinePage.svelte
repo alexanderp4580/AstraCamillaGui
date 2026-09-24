@@ -42,8 +42,10 @@ import {
   setProcessorStepBypassed,
   setCompressorParam,
   setNoiseGateParam,
+  setNightModeParam,
 } from '../lib/pipelineProcessorEdit';
 import { validateMixerRouting, type MixerValidationResult } from '../lib/mixerRoutingValidation';
+import { isKnownProcessorType } from '../lib/knownTypes';
 import type { GuiReadyCamillaDSPConfig } from '../lib/camillaDSP';
 import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabledFiltersAfterPipelineReorder, removeDisabledLocationsForStep, remapDisabledFiltersAfterFilterStepChannelsChange } from '../lib/disabledFiltersOverlay';
   import FilterBlock from '../components/pipeline/FilterBlock.svelte';
@@ -686,6 +688,8 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
         updatedConfig = setCompressorParam(updatedConfig, processorName, param as any, value);
       } else if (processor.type === 'NoiseGate') {
         updatedConfig = setNoiseGateParam(updatedConfig, processorName, param as any, value);
+      } else if (processor.type === 'NightMode') {
+        updatedConfig = setNightModeParam(updatedConfig, processorName, param as any, value);
       } else {
         throw new Error(`Unsupported processor type: ${processor.type}`);
       }
@@ -850,18 +854,35 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
     }
   }
 
-  function handleAddProcessorBlock() {
+  // Add-processor popup state. Replaced a pair of window.prompt() calls —
+  // the type prompt in particular was easy to mistype/cancel, and had no
+  // way to show the user which types are actually valid.
+  let addProcessorPopupOpen = false;
+  let newProcessorType: 'Compressor' | 'NoiseGate' | 'NightMode' = 'Compressor';
+  let newProcessorName = '';
+
+  function openAddProcessorPopup() {
+    newProcessorType = 'Compressor';
+    newProcessorName = '';
+    addProcessorPopupOpen = true;
+  }
+
+  function closeAddProcessorPopup() {
+    addProcessorPopupOpen = false;
+  }
+
+  function confirmAddProcessor() {
     if (!$dspConfig) return;
-    
-    // Prompt for processor name
-    const baseName = window.prompt('Enter processor name:', 'processor');
-    if (!baseName) return; // User cancelled
-    
+    if (!isKnownProcessorType(newProcessorType)) return; // <select> only offers known types
+
+    const baseName = newProcessorName.trim() || newProcessorType.toLowerCase();
+    addProcessorPopupOpen = false;
+
     validationError = null;
     const snapshot = JSON.parse(JSON.stringify($dspConfig));
-    
+
     try {
-      const { processorName, processorDef, step } = createNewProcessorBlock($dspConfig, 'Processor', baseName);
+      const { processorName, processorDef, step } = createNewProcessorBlock($dspConfig, newProcessorType, baseName);
       const sel = selection;
       const insertIndex = sel?.kind === 'block'
         ? blocks.findIndex(b => b.blockId === sel.blockId) + 1
@@ -1115,7 +1136,12 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
         <span class="btn-icon">+🔀</span>
         <span class="btn-label">Mixer</span>
       </button>
-      <button class="toolbar-btn" on:click={handleAddProcessorBlock} title="Add Processor Block">
+      <button
+        class="toolbar-btn"
+        class:active={addProcessorPopupOpen}
+        on:click={openAddProcessorPopup}
+        title="Add Processor Block"
+      >
         <span class="btn-icon">+⚙️</span>
         <span class="btn-label">Processor</span>
       </button>
@@ -1129,6 +1155,32 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
         <span class="btn-label">Remove</span>
       </button>
     </div>
+
+    {#if addProcessorPopupOpen}
+      <div class="add-processor-popup">
+        <div class="popup-row">
+          <label for="new-processor-type">Type</label>
+          <select id="new-processor-type" bind:value={newProcessorType}>
+            <option value="Compressor">Compressor</option>
+            <option value="NoiseGate">NoiseGate</option>
+            <option value="NightMode">NightMode</option>
+          </select>
+        </div>
+        <div class="popup-row">
+          <label for="new-processor-name">Name</label>
+          <input
+            id="new-processor-name"
+            type="text"
+            bind:value={newProcessorName}
+            placeholder={newProcessorType.toLowerCase()}
+          />
+        </div>
+        <div class="popup-actions">
+          <button class="popup-btn cancel" on:click={closeAddProcessorPopup}>Cancel</button>
+          <button class="popup-btn confirm" on:click={confirmAddProcessor}>Add</button>
+        </div>
+      </div>
+    {/if}
   {/if}
 
   {#if !isConnected}
@@ -1427,6 +1479,7 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
 
   .toolbar {
     display: flex;
+    flex-wrap: wrap;
     gap: 0.5rem;
     margin-bottom: 1.5rem;
     padding: 0.75rem;
@@ -1468,6 +1521,93 @@ import { getDisabledFilterLocations, getStepKey, markFilterDisabled, remapDisabl
   .toolbar-btn.remove-btn:hover:not(:disabled) {
     background: rgba(255, 80, 80, 0.2);
     border-color: rgba(255, 80, 80, 0.5);
+  }
+
+  .toolbar-btn.active {
+    background: rgba(212, 164, 255, 0.15);
+    border-color: rgba(212, 164, 255, 0.4);
+  }
+
+  /* Add-processor popup — inline card below the toolbar rather than a
+     floating/absolutely-positioned popover, so it can never clip off-screen
+     on a narrow viewport (the exact class of bug the filter-type picker
+     had before it was fixed to clamp into the viewport). */
+  .add-processor-popup {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+    padding: 1rem;
+    background: var(--ui-panel);
+    border: 1px solid rgba(212, 164, 255, 0.3);
+    border-radius: 8px;
+  }
+
+  .popup-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .popup-row label {
+    flex: 0 0 3.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--ui-text-muted);
+  }
+
+  .popup-row select,
+  .popup-row input {
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem 0.625rem;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid var(--ui-border);
+    border-radius: 4px;
+    color: var(--ui-text);
+    font-size: 0.875rem;
+  }
+
+  .popup-row select:focus,
+  .popup-row input:focus {
+    outline: none;
+    border-color: rgba(212, 164, 255, 0.5);
+  }
+
+  .popup-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+
+  .popup-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .popup-btn.cancel {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--ui-border);
+    color: var(--ui-text-muted);
+  }
+
+  .popup-btn.cancel:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  .popup-btn.confirm {
+    background: rgba(212, 164, 255, 0.15);
+    border: 1px solid rgba(212, 164, 255, 0.4);
+    color: var(--ui-text);
+  }
+
+  .popup-btn.confirm:hover {
+    background: rgba(212, 164, 255, 0.25);
+    border-color: rgba(212, 164, 255, 0.6);
   }
 
   .btn-icon {

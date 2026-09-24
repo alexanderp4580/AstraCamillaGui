@@ -22,11 +22,11 @@ describe('EqPage Refactored Structure', () => {
     expect(source).toContain('EqRightPanel');
     expect(source).toContain('EqOverlays');
     
-    // Verify minimal layout structure
+    // Verify minimal layout structure (vertical-first: single scrolling
+    // column, not the old fixed-height 2-column desktop subgrid)
     expect(source).toContain('eq-layout');
-    expect(source).toContain('grid-template-columns');
-    expect(source).toContain('grid-template-rows: auto 1fr auto');
-    
+    expect(source).toContain('flex-direction: column');
+
     // Verify DSP initialization logic
     expect(source).toContain('initializeFromConfig');
     expect(source).toContain('connectionState');
@@ -205,52 +205,52 @@ describe('EqPlotMath Module', () => {
   });
 });
 
-describe('Layout Refinement (MVP-11)', () => {
-  it('EqPage contains 3-row subgrid layout structure', async () => {
+describe('Layout Refinement (mobile-first vertical)', () => {
+  it('EqPage stacks its panels in a single scrolling column', async () => {
     const fs = await import('fs');
     const path = await import('path');
     const { fileURLToPath } = await import('url');
-    
+
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     const componentPath = path.join(__dirname, 'EqPage.svelte');
     const source = fs.readFileSync(componentPath, 'utf-8');
 
-    // Verify layout container
     expect(source).toContain('eq-layout');
-    expect(source).toContain('grid-template-rows: auto 1fr auto');
+    expect(source).toContain('display: flex');
+    expect(source).toContain('flex-direction: column');
   });
 
-  it('EqLeftPanel uses subgrid', async () => {
+  it('EqLeftPanel stacks its zones vertically', async () => {
     const fs = await import('fs');
     const path = await import('path');
     const { fileURLToPath } = await import('url');
-    
+
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     const componentPath = path.join(__dirname, 'eq/left/EqLeftPanel.svelte');
     const source = fs.readFileSync(componentPath, 'utf-8');
 
-    // Verify subgrid structure
     expect(source).toContain('eq-left');
-    expect(source).toContain('grid-template-rows: subgrid');
-    expect(source).toContain('grid-row: 1 / span 3');
+    expect(source).toContain('flex-direction: column');
+    // Octave/region label rows scroll horizontally instead of squeezing
+    // 9 fixed columns onto a phone-width screen.
+    expect(source).toContain('overflow-x: auto');
   });
 
-  it('EqRightPanel contains band grid with subgrid', async () => {
+  it('EqRightPanel stacks band cards vertically', async () => {
     const fs = await import('fs');
     const path = await import('path');
     const { fileURLToPath } = await import('url');
-    
+
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = path.dirname(__filename);
     const componentPath = path.join(__dirname, 'eq/right/EqRightPanel.svelte');
     const source = fs.readFileSync(componentPath, 'utf-8');
 
-    // Verify band grid structure
     expect(source).toContain('band-grid');
-    expect(source).toContain('grid-template-rows: subgrid');
-    expect(source).toContain('grid-row: 1 / span 3');
+    expect(source).toContain('display: flex');
+    expect(source).toContain('flex-direction: column');
   });
 });
 

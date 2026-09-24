@@ -10,9 +10,9 @@ import type { Filter } from './camillaSchema';
  * Known processor types that we support with custom UI
  * (Based on CamillaDSP v3.0 reference docs)
  */
-export type KnownProcessorType = 'Compressor' | 'NoiseGate';
+export type KnownProcessorType = 'Compressor' | 'NoiseGate' | 'NightMode';
 
-const KNOWN_PROCESSOR_TYPES: Set<string> = new Set(['Compressor', 'NoiseGate']);
+const KNOWN_PROCESSOR_TYPES: Set<string> = new Set(['Compressor', 'NoiseGate', 'NightMode']);
 
 /**
  * Check if a processor type is known and supported

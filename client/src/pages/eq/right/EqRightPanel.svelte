@@ -29,26 +29,15 @@
 </div>
 
 <style>
-  /* Right side: participates in parent's 3 rows via subgrid */
   .eq-right {
-    display: grid;
-    grid-template-rows: subgrid;
-    grid-row: 1 / span 3;
+    width: 100%;
     min-width: 0;
-    min-height: 0;
-    overflow: hidden;
   }
 
   .band-grid {
-    display: grid;
-    grid-auto-flow: column;
-    grid-template-rows: subgrid;
-    grid-row: 1 / span 3;
-    gap: 0.375rem;
-    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
     width: 100%;
-    min-height: 0;
-    overflow-x: auto;
-    overflow-y: hidden;
   }
 </style>

@@ -15,6 +15,10 @@ describe('knownTypes', () => {
       expect(isKnownProcessorType('NoiseGate')).toBe(true);
     });
 
+    it('should return true for NightMode', () => {
+      expect(isKnownProcessorType('NightMode')).toBe(true);
+    });
+
     it('should return false for unknown processor type', () => {
       expect(isKnownProcessorType('Limiter')).toBe(false);
       expect(isKnownProcessorType('Unknown')).toBe(false);

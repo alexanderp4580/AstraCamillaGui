@@ -68,15 +68,16 @@
 </div>
 
 <style>
-  /* MVP-11: CSS Subgrid Layout */
+  /* Vertical-first: plot on top, band controls stacked below, page scrolls.
+     Works the same from phone widths up to desktop — no separate breakpoint
+     layout to keep in sync. */
   .eq-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, clamp(240px, 32vw, 520px));
-    grid-template-rows: auto 1fr auto;
-    height: 100vh;
-    padding: 1rem;
+    display: flex;
+    flex-direction: column;
     gap: 1rem;
+    padding: 1rem;
+    max-width: 900px;
+    margin: 0 auto;
     box-sizing: border-box;
-    min-height: 0;
   }
 </style>

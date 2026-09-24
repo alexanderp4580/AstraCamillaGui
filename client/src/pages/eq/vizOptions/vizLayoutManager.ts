@@ -202,10 +202,18 @@ export class VizLayoutManager {
       const id = this.expandedIdConstrained();
       const g = this.groupById(id) ?? this.sortedByPriorityAsc(this.groups)[0];
       g.el.classList.add('expanded');
-      if (this._frozenId !== g.id || first) {
-        this._frozenId = g.id;
-        requestAnimationFrame(() => this.scrollGroupIntoView(g.el));
-      }
+      this._frozenId = g.id;
+      // Always re-check on every layout pass (not just the first time this id
+      // is frozen) — the container can settle to its final width across
+      // several resize events, and a stale scroll position from an earlier,
+      // not-yet-final width otherwise never gets corrected.
+      requestAnimationFrame(() => this.scrollGroupIntoView(g.el));
+      // .groupContainer.expanded animates width over 0.18s (see CSS). A
+      // correction computed mid-transition reads a partial offsetWidth, so
+      // this immediate call can land slightly wrong. A second pass once the
+      // transition has settled catches that — cheap and idempotent, since
+      // scrollGroupIntoView no-ops if the group is already fully in view.
+      window.setTimeout(() => this.scrollGroupIntoView(g.el), 200);
       return;
     }
 
@@ -239,15 +247,27 @@ export class VizLayoutManager {
   scrollGroupIntoView(groupEl: HTMLElement) {
     if (!this.viewport.classList.contains('constrained')) return;
     const vp = this.viewport;
-    const vpR = vp.getBoundingClientRect();
-    const elR = groupEl.getBoundingClientRect();
-    if (elR.left >= vpR.left && elR.right <= vpR.right) return;
-    const ld = elR.left - vpR.left;
-    const rd = elR.right - vpR.right;
-    let t = vp.scrollLeft;
-    if (ld < 0) t += ld - 16;
-    else if (rd > 0) t += rd + 16;
-    vp.scrollTo({ left: t, behavior: 'smooth' });
+    // Absolute target computed from offsetLeft/offsetWidth (stable layout
+    // geometry), not getBoundingClientRect (reflects the current, possibly
+    // mid-animation scroll position). This call can run several times back
+    // to back while the container's width is still settling — an
+    // incremental "nudge from current scrollLeft" approach compounds into
+    // the wrong resting position when a new correction lands before the
+    // previous smooth-scroll finishes; an absolute target is idempotent.
+    const margin = 16;
+    const elLeft = groupEl.offsetLeft;
+    const elRight = elLeft + groupEl.offsetWidth;
+    const maxScroll = Math.max(0, vp.scrollWidth - vp.clientWidth);
+    let target: number;
+    if (elLeft - margin < vp.scrollLeft) {
+      target = elLeft - margin;
+    } else if (elRight + margin > vp.scrollLeft + vp.clientWidth) {
+      target = elRight + margin - vp.clientWidth;
+    } else {
+      return; // already fully visible with margin
+    }
+    target = Math.max(0, Math.min(target, maxScroll));
+    vp.scrollTo({ left: target, behavior: 'smooth' });
   }
 
   updateOverflowAffordances() {

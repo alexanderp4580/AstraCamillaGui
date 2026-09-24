@@ -145,10 +145,13 @@ describe('PipelinePage MVP-19 Implementation', () => {
     expect(source).toContain('Processor</span>');
     expect(source).toContain('Remove</span>');
     
-    // Verify handlers exist
+    // Verify handlers exist. Processor add is a type+name popup (not a
+    // single-shot handler like the others) since it needs to ask which of
+    // the three known processor types to create.
     expect(source).toContain('handleAddFilterBlock');
     expect(source).toContain('handleAddMixerBlock');
-    expect(source).toContain('handleAddProcessorBlock');
+    expect(source).toContain('openAddProcessorPopup');
+    expect(source).toContain('confirmAddProcessor');
     expect(source).toContain('handleRemoveBlock');
   });
 });

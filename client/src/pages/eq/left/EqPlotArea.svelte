@@ -624,8 +624,9 @@
   .eq-plot-area {
     display: grid;
     grid-template-columns: 1fr 32px;
-    min-height: 0;
-    height: 100%;
+    width: 100%;
+    aspect-ratio: 1000 / 400;
+    max-height: 60vh;
   }
 
   .eq-plot {

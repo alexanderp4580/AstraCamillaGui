@@ -1,7 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import FilterIcon from '../icons/FilterIcons.svelte';
-  import KnobDial from '../KnobDial.svelte';
+  import HSlider from '../HSlider.svelte';
   import type { FilterBlockVm } from '../../lib/pipelineViewModel';
 
   export let block: FilterBlockVm;
@@ -326,105 +326,88 @@
               {#if filter.editable}
                 <!-- Known editable filter: Show parameter controls -->
                 <div class="filter-editor">
-                  <div class="editor-controls">
-                    <!-- Column 1: Power button -->
-                    <div class="editor-col power-col">
-                      <button 
-                        class="power-btn"
-                        class:enabled={!filter.disabled}
-                        on:click={() => {
-                          if (filter.disabled) {
-                            dispatch('enableFilter', { blockId: block.blockId, filterName: filter.name });
-                          } else {
-                            dispatch('disableFilter', { blockId: block.blockId, filterName: filter.name });
+                  <div class="editor-toolbar">
+                    <button
+                      class="power-btn"
+                      class:enabled={!filter.disabled}
+                      on:click={() => {
+                        if (filter.disabled) {
+                          dispatch('enableFilter', { blockId: block.blockId, filterName: filter.name });
+                        } else {
+                          dispatch('disableFilter', { blockId: block.blockId, filterName: filter.name });
+                        }
+                      }}
+                      title={filter.disabled ? 'Enable filter' : 'Disable filter'}
+                      aria-label={filter.disabled ? 'Enable filter' : 'Disable filter'}
+                    >
+                      ⏻
+                    </button>
+                    <span class="editor-toolbar-spacer"></span>
+                    {#if !filter.disabled}
+                      <button
+                        class="remove-filter-btn"
+                        on:click={() => dispatch('removeFilter', { filterName: filter.name })}
+                        title="Remove this filter"
+                      >
+                        ×
+                      </button>
+                    {/if}
+                  </div>
+
+                  <div class="editor-sliders" class:disabled={filter.disabled}>
+                    <HSlider
+                      label="Freq"
+                      value={filter.freq ?? 1000}
+                      min={20}
+                      max={20000}
+                      scale="log"
+                      formatValue={(v) => `${v.toFixed(0)} Hz`}
+                      on:change={(e) => {
+                        if (!filter.disabled) {
+                          dispatch('updateFilterParam', {
+                            filterName: filter.name,
+                            param: 'freq',
+                            value: e.detail.value
+                          });
+                        }
+                      }}
+                    />
+                    <HSlider
+                      label="Q"
+                      value={filter.q ?? 1.0}
+                      min={0.1}
+                      max={10}
+                      scale="linear"
+                      formatValue={(v) => v.toFixed(2)}
+                      on:change={(e) => {
+                        if (!filter.disabled) {
+                          dispatch('updateFilterParam', {
+                            filterName: filter.name,
+                            param: 'q',
+                            value: e.detail.value
+                          });
+                        }
+                      }}
+                    />
+                    {#if filter.supportsGain}
+                      <HSlider
+                        label="Gain"
+                        value={filter.gain ?? 0}
+                        min={-24}
+                        max={24}
+                        scale="linear"
+                        formatValue={(v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)} dB`}
+                        on:change={(e) => {
+                          if (!filter.disabled) {
+                            dispatch('updateFilterParam', {
+                              filterName: filter.name,
+                              param: 'gain',
+                              value: e.detail.value
+                            });
                           }
                         }}
-                        title={filter.disabled ? 'Enable filter' : 'Disable filter'}
-                        aria-label={filter.disabled ? 'Enable filter' : 'Disable filter'}
-                      >
-                        ⏻
-                      </button>
-                    </div>
-                    
-                    <!-- Column 2: Knobs (stretches) -->
-                    <div class="editor-col knobs-col" class:disabled={filter.disabled}>
-                      <!-- Frequency knob -->
-                      <div class="editor-control">
-                        <span class="control-label">Freq</span>
-                        <KnobDial 
-                          value={filter.freq ?? 1000} 
-                          mode="frequency" 
-                          size={24}
-                          on:change={(e) => {
-                            if (!filter.disabled) {
-                              dispatch('updateFilterParam', { 
-                                filterName: filter.name, 
-                                param: 'freq', 
-                                value: e.detail.value 
-                              });
-                            }
-                          }}
-                        />
-                        <span class="control-value">{(filter.freq ?? 1000).toFixed(0)} Hz</span>
-                      </div>
-                      
-                      <!-- Q knob -->
-                      <div class="editor-control">
-                        <span class="control-label">Q</span>
-                        <KnobDial 
-                          value={filter.q ?? 1.0} 
-                          mode="q" 
-                          size={24}
-                          on:change={(e) => {
-                            if (!filter.disabled) {
-                              dispatch('updateFilterParam', { 
-                                filterName: filter.name, 
-                                param: 'q', 
-                                value: e.detail.value 
-                              });
-                            }
-                          }}
-                        />
-                        <span class="control-value">{(filter.q ?? 1.0).toFixed(1)}</span>
-                      </div>
-                      
-                      <!-- Gain knob (only for gain-capable types) -->
-                      {#if filter.supportsGain}
-                        <div class="editor-control">
-                          <span class="control-label">Gain</span>
-                          <KnobDial 
-                            value={filter.gain ?? 0} 
-                            min={-24}
-                            max={24}
-                            scale="linear"
-                            size={24}
-                            on:change={(e) => {
-                              if (!filter.disabled) {
-                                dispatch('updateFilterParam', { 
-                                  filterName: filter.name, 
-                                  param: 'gain', 
-                                  value: e.detail.value 
-                                });
-                              }
-                            }}
-                          />
-                          <span class="control-value">{(filter.gain ?? 0).toFixed(1)} dB</span>
-                        </div>
-                      {/if}
-                    </div>
-                    
-                    <!-- Column 3: Remove button -->
-                    <div class="editor-col actions-col">
-                      {#if !filter.disabled}
-                        <button 
-                          class="remove-filter-btn"
-                          on:click={() => dispatch('removeFilter', { filterName: filter.name })}
-                          title="Remove this filter"
-                        >
-                          ×
-                        </button>
-                      {/if}
-                    </div>
+                      />
+                    {/if}
                   </div>
                 </div>
               {:else}
@@ -547,6 +530,7 @@
     display: flex;
     align-items: stretch;
     gap: 0.375rem;
+    min-width: 0;
   }
 
   .row-grab-handle {
@@ -601,7 +585,8 @@
     border-radius: 4px;
     transition: all 0.15s ease;
     flex: 1;
-    /* min-width: 0; */
+    min-width: 0;
+    flex-wrap: wrap;
   }
 
   .filter-row:hover {
@@ -634,9 +619,13 @@
 
   .filter-name {
     flex: 1;
+    min-width: 4rem;
     font-size: 0.875rem;
     font-family: 'Courier New', monospace;
     color: var(--ui-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .warning-badge {
@@ -662,6 +651,7 @@
   .filter-values {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 0.625rem;
     margin-left: auto;
     padding-right: 0.25rem;
@@ -718,47 +708,29 @@
     border-radius: 4px;
   }
   
-  .editor-controls {
+  .editor-toolbar {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    margin-bottom: 0.625rem;
   }
-  
-  .editor-col {
+
+  .editor-toolbar-spacer {
+    flex: 1;
+  }
+
+  .editor-sliders {
     display: flex;
-    align-items: center;
-  }
-  
-  .power-col {
-    flex: 0 0 auto;
-  }
-  
-  .knobs-col {
-    flex: 1 1 auto;
-    min-width: 0;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
     transition: opacity 0.15s ease;
   }
-  
-  .knobs-col.disabled {
+
+  .editor-sliders.disabled {
     opacity: 0.35;
     pointer-events: none;
   }
-  
-  .actions-col {
-    flex: 0 0 auto;
-  }
-  
-  .editor-control {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.875rem;
-  }
-  
+
   .power-btn {
     width: 32px;
     height: 32px;
@@ -787,21 +759,6 @@
   .power-btn.enabled:hover {
     background: rgba(80, 200, 120, 0.25);
     border-color: rgba(80, 200, 120, 0.5);
-  }
-  
-  .control-label {
-    color: var(--ui-text-muted);
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  
-  .control-value {
-    min-width: 60px;
-    color: var(--ui-text);
-    font-size: 0.75rem;
-    font-family: 'Courier New', monospace;
   }
   
   .remove-filter-btn {

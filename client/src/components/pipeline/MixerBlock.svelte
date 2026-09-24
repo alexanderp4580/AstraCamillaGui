@@ -3,7 +3,7 @@
   import type { MixerBlockVm } from '../../lib/pipelineViewModel';
   import type { Mixer } from '../../lib/camillaDSP';
   import type { MixerValidationResult } from '../../lib/mixerRoutingValidation';
-  import KnobDial from '../KnobDial.svelte';
+  import HSlider from '../HSlider.svelte';
 
   export let block: MixerBlockVm;
   export let expanded: boolean = false;
@@ -138,43 +138,43 @@
             <div class="sources-list">
               {#each dest.sources as source, sourceIndex}
                 <div class="source-row">
-                  <span class="source-label">Src {source.channel}</span>
-                  
-                  <div class="source-gain">
-                    <KnobDial
-                      value={source.gain ?? 0}
-                      min={-150}
-                      max={50}
-                      scale="linear"
-                      size={24}
-                      on:change={(e) => handleGainChange(destIndex, sourceIndex, e)}
-                    />
-                    <span class="gain-value">{(source.gain ?? 0).toFixed(1)} dB</span>
+                  <div class="source-row-top">
+                    <span class="source-label">Src {source.channel}</span>
+
+                    <label class="source-toggle">
+                      <input
+                        type="checkbox"
+                        checked={source.inverted || false}
+                        on:change={() => handleSourceInvertToggle(destIndex, sourceIndex)}
+                      />
+                      <span>Invert</span>
+                    </label>
+
+                    <label class="source-toggle">
+                      <input
+                        type="checkbox"
+                        checked={source.mute || false}
+                        on:change={() => handleSourceMuteToggle(destIndex, sourceIndex)}
+                      />
+                      <span>Mute</span>
+                    </label>
+
+                    <button
+                      class="remove-btn"
+                      on:click={() => handleRemoveSource(destIndex, sourceIndex)}
+                      title="Remove source"
+                    >×</button>
                   </div>
 
-                  <label class="source-toggle">
-                    <input
-                      type="checkbox"
-                      checked={source.inverted || false}
-                      on:change={() => handleSourceInvertToggle(destIndex, sourceIndex)}
-                    />
-                    <span>Invert</span>
-                  </label>
-
-                  <label class="source-toggle">
-                    <input
-                      type="checkbox"
-                      checked={source.mute || false}
-                      on:change={() => handleSourceMuteToggle(destIndex, sourceIndex)}
-                    />
-                    <span>Mute</span>
-                  </label>
-
-                  <button
-                    class="remove-btn"
-                    on:click={() => handleRemoveSource(destIndex, sourceIndex)}
-                    title="Remove source"
-                  >×</button>
+                  <HSlider
+                    label="Gain"
+                    value={source.gain ?? 0}
+                    min={-150}
+                    max={50}
+                    scale="linear"
+                    formatValue={(v) => `${v >= 0 ? '+' : ''}${v.toFixed(1)} dB`}
+                    on:change={(e) => handleGainChange(destIndex, sourceIndex, e)}
+                  />
                 </div>
               {/each}
             </div>
@@ -402,12 +402,19 @@
 
   .source-row {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
+    flex-direction: column;
+    gap: 0.5rem;
     padding: 0.5rem;
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid var(--ui-border);
     border-radius: 4px;
+  }
+
+  .source-row-top {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
   }
 
   .source-label {
@@ -415,19 +422,6 @@
     font-weight: 600;
     color: var(--ui-text);
     min-width: 3rem;
-  }
-
-  .source-gain {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .gain-value {
-    font-size: 0.8125rem;
-    font-family: 'Courier New', monospace;
-    color: var(--ui-text-muted);
-    min-width: 4rem;
   }
 
   .source-toggle {
