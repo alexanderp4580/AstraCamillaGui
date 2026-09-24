@@ -5,7 +5,7 @@
 
 import { writable, derived } from 'svelte/store';
 
-export type Route = '/connect' | '/eq' | '/presets' | '/pipeline';
+export type Route = '/connect' | '/eq' | '/presets' | '/pipeline' | '/energy';
 
 function createRouter() {
   const { subscribe, set } = writable<Route>(getCurrentRoute());
@@ -38,7 +38,7 @@ function getCurrentRoute(): Route {
   }
 
   // Validate route
-  const validRoutes: Route[] = ['/connect', '/eq', '/presets', '/pipeline'];
+  const validRoutes: Route[] = ['/connect', '/eq', '/presets', '/pipeline', '/energy'];
   if (validRoutes.includes(hash as Route)) {
     return hash as Route;
   }

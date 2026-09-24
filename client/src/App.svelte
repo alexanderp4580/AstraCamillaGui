@@ -8,6 +8,7 @@
   import EqPage from './pages/EqPage.svelte';
   import PresetsPage from './pages/PresetsPage.svelte';
   import PipelinePage from './pages/PipelinePage.svelte';
+  import EnergyPage from './pages/EnergyPage.svelte';
   import './styles/theme.css';
 
   let currentRoute: string;
@@ -31,6 +32,8 @@
       <PresetsPage />
     {:else if currentRoute === '/pipeline'}
       <PipelinePage />
+    {:else if currentRoute === '/energy'}
+      <EnergyPage />
     {/if}
   </main>
 </div>

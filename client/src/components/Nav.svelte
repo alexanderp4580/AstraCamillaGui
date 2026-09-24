@@ -10,6 +10,7 @@
     { route: '/presets', label: 'Presets', icon: '📁' },
     { route: '/eq', label: 'Parametric EQ', icon: '🎚️' },
     { route: '/pipeline', label: 'Pipeline Editor', icon: '🔗' },
+    { route: '/energy', label: 'Energy Meter', icon: '📊' },
   ];
 
   let currentRoute: Route;
