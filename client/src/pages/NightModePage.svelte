@@ -142,6 +142,7 @@
     margin: 0;
   }
 
+  .hint,
   .intro {
     font-size: 0.875rem;
     line-height: 1.45;
