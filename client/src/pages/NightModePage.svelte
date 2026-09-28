@@ -59,6 +59,12 @@
 
 <div class="night-page">
   <h1>Night Mode</h1>
+  <p class="intro">
+    Makes films watchable at low volume: turns down explosions, gunfire and loud music
+    while leaving dialogue alone. It follows the dialogue level automatically, so it keeps
+    working when you change the TV volume, and adds no delay, so lip sync is unaffected.
+    Changes apply live. Press Save to keep them after a restart.
+  </p>
 
   {#if !isConnected}
     <p class="hint">Connect to CamillaDSP to adjust night mode.</p>
@@ -79,6 +85,10 @@
       />
       <span>{nightMode.bypassed ? 'Off' : 'On'}</span>
     </label>
+    <p class="hint">
+      Off passes audio straight through. Settings are kept, so switching back on
+      restores them.
+    </p>
 
     <div class="params" class:inactive={nightMode.bypassed}>
       {#each NIGHT_MODE_PARAMS as spec (spec.key)}
@@ -92,11 +102,16 @@
             on:change={(e) => setParam(spec.key, e.detail.value)}
           />
           <p class="param-help">{spec.help}</p>
+          <p class="param-help effect">{spec.effect}</p>
         </div>
       {/each}
     </div>
 
     <button class="secondary-btn" on:click={resetDefaults}>Reset to defaults</button>
+    <p class="hint">
+      Defaults are deliberately strong. If night mode does too much, raise Headroom or
+      lower Amount first.
+    </p>
   {/if}
 
   {#if editError}
@@ -121,9 +136,15 @@
     margin: 0;
   }
 
-  .hint {
+  .hint,
+  .intro {
     color: var(--ui-text-muted);
     margin: 0;
+  }
+
+  .intro {
+    font-size: 0.875rem;
+    line-height: 1.45;
   }
 
   .toggle {
@@ -159,7 +180,13 @@
   .param-help {
     margin: 0.25rem 0 0;
     font-size: 0.75rem;
+    line-height: 1.4;
     color: var(--ui-text-muted);
+  }
+
+  .param-help.effect {
+    color: var(--ui-text-dim, var(--ui-text-muted));
+    font-style: italic;
   }
 
   .primary-btn,
