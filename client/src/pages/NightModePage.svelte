@@ -52,6 +52,14 @@
     return raw === null || raw === undefined ? fallback : Number(raw);
   }
 
+  // Precomputed so the each-block below reacts to nightMode changing: a per-item
+  // function call in the template (`paramValue(spec.key, ...)`) only reads nightMode
+  // inside its body, not in the expression itself, so Svelte's compiler can't tell
+  // this needs to be re-run when nightMode updates — it renders once and freezes.
+  $: paramRows = nightMode
+    ? NIGHT_MODE_PARAMS.map((spec) => ({ spec, value: paramValue(spec.key, spec.defaultValue) }))
+    : [];
+
   function formatValue(v: number, unit: string): string {
     return `${v.toFixed(unit === ':1' ? 1 : 0)}${unit}`;
   }
@@ -91,11 +99,11 @@
     </p>
 
     <div class="params" class:inactive={nightMode.bypassed}>
-      {#each NIGHT_MODE_PARAMS as spec (spec.key)}
+      {#each paramRows as { spec, value } (spec.key)}
         <div class="param">
           <HSlider
             label={spec.label}
-            value={paramValue(spec.key, spec.defaultValue)}
+            {value}
             min={spec.min}
             max={spec.max}
             formatValue={(v) => formatValue(v, spec.unit)}
