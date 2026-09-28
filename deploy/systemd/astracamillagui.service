@@ -1,27 +1,27 @@
 [Unit]
-Description=CamillaEQ - CamillaDSP Graphical Equalizer Interface
+Description=AstraCamillaGui - CamillaDSP Graphical Equalizer Interface
 After=network.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=camillaeq
-Group=camillaeq
-WorkingDirectory=/opt/camillaeq
-EnvironmentFile=/etc/camillaeq/camillaeq.env
+User=astracamillagui
+Group=astracamillagui
+WorkingDirectory=/opt/astracamillagui
+EnvironmentFile=/etc/astracamillagui/astracamillagui.env
 ExecStart=/usr/bin/node server/dist/index.js
 Restart=on-failure
 RestartSec=2
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=camillaeq
+SyslogIdentifier=astracamillagui
 
 # Security hardening
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/camillaeq/data
+ReadWritePaths=/opt/astracamillagui/data
 
 [Install]
 WantedBy=multi-user.target

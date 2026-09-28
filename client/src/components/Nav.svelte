@@ -3,7 +3,7 @@
   import { connectionState } from '../state/dspStore';
   import { uploadStatus } from '../state/eqStore';
   import { appVersion } from '../state/appVersionStore';
-  import logoUrl from '../assets/CamillaEQ-80w.webp';
+  import logoUrl from '../assets/AstraCamillaGui-80w.webp';
 
   const navItems: { route: Route; label: string; icon: string }[] = [
     { route: '/connect', label: 'Connection', icon: '🔌' },
@@ -74,10 +74,10 @@
   
   {#if $appVersion}
     <div class="nav-footer">
-      <a href="https://github.com/AlfredJKwack/camillaEQ" 
+      <a href="https://github.com/alexanderp4580/AstraCamillaGui" 
          class="nav-logo"
-         title="CamillaEQ v{$appVersion.version} documentation ({$appVersion.buildHash || 'dev'})">
-        <img src={logoUrl} alt="CamillaEQ Logo" />
+         title="AstraCamillaGui v{$appVersion.version} documentation ({$appVersion.buildHash || 'dev'})">
+        <img src={logoUrl} alt="AstraCamillaGui Logo" />
         v{$appVersion.version}
       </a>
     </div>

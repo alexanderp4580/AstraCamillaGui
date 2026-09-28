@@ -1,6 +1,6 @@
 # Recovery and Backups
 
-**Intended audience:** Power users managing CamillaEQ data and disaster recovery.
+**Intended audience:** Power users managing AstraCamillaGui data and disaster recovery.
 
 **This document does not cover:** Development workflows or version control.
 
@@ -11,7 +11,7 @@
 ### Critical Data
 
 **Must back up:**
-- `/opt/camillaeq/data/` - All user data
+- `/opt/astracamillagui/data/` - All user data
   - `configs/*.json` - User-saved presets
   - `configs/autoeq/` - AutoEQ library (if using)
   - `latest_dsp_state.json` - Recovery cache
@@ -29,8 +29,8 @@
 ### Configuration
 
 **Should back up:**
-- `/etc/camillaeq/camillaeq.env` - Environment variables
-- `/etc/systemd/system/camillaeq.service` - Service definition (if modified)
+- `/etc/astracamillagui/astracamillagui.env` - Environment variables
+- `/etc/systemd/system/astracamillagui.service` - Service definition (if modified)
 
 **Size:** <10 KB total
 
@@ -41,8 +41,8 @@
 ### Application Code
 
 **Optional to back up:**
-- `/opt/camillaeq/server/` - Built application
-- `/opt/camillaeq/package.json` - Dependency metadata
+- `/opt/astracamillagui/server/` - Built application
+- `/opt/astracamillagui/package.json` - Dependency metadata
 
 **Size:** ~20-30 MB
 
@@ -55,7 +55,7 @@
 ### Not Needed
 
 **Do not back up:**
-- `/opt/camillaeq/node_modules/` - Can reinstall with `npm ci`
+- `/opt/astracamillagui/node_modules/` - Can reinstall with `npm ci`
 - Logs (in journal) - System manages retention
 - `/tmp/` - Ephemeral
 
@@ -69,20 +69,20 @@
 ```bash
 # Create timestamped backup
 DATE=$(date +%Y%m%d-%H%M%S)
-sudo tar czf camillaeq-backup-$DATE.tar.gz \
-  /opt/camillaeq/data \
-  /etc/camillaeq \
-  /etc/systemd/system/camillaeq.service
+sudo tar czf astracamillagui-backup-$DATE.tar.gz \
+  /opt/astracamillagui/data \
+  /etc/astracamillagui \
+  /etc/systemd/system/astracamillagui.service
 
 # Store safely
-sudo mv camillaeq-backup-$DATE.tar.gz /path/to/safe/location/
+sudo mv astracamillagui-backup-$DATE.tar.gz /path/to/safe/location/
 ```
 
 ---
 
 ### Automated Daily Backup
 
-**Script:** `/usr/local/bin/backup-camillaeq.sh`
+**Script:** `/usr/local/bin/backup-astracamillagui.sh`
 ```bash
 #!/bin/bash
 set -e
@@ -95,24 +95,24 @@ KEEP_DAYS=30
 mkdir -p $BACKUP_DIR
 
 # Backup data
-tar czf $BACKUP_DIR/camillaeq-data-$DATE.tar.gz \
-  /opt/camillaeq/data
+tar czf $BACKUP_DIR/astracamillagui-data-$DATE.tar.gz \
+  /opt/astracamillagui/data
 
 # Backup configuration
-tar czf $BACKUP_DIR/camillaeq-config-$DATE.tar.gz \
-  /etc/camillaeq \
-  /etc/systemd/system/camillaeq.service
+tar czf $BACKUP_DIR/astracamillagui-config-$DATE.tar.gz \
+  /etc/astracamillagui \
+  /etc/systemd/system/astracamillagui.service
 
 # Remove old backups (keep last 30 days)
-find $BACKUP_DIR -name "camillaeq-*.tar.gz" -mtime +$KEEP_DAYS -delete
+find $BACKUP_DIR -name "astracamillagui-*.tar.gz" -mtime +$KEEP_DAYS -delete
 
 # Log completion
-echo "$(date): Backup completed" >> /var/log/camillaeq-backup.log
+echo "$(date): Backup completed" >> /var/log/astracamillagui-backup.log
 ```
 
 **Make executable:**
 ```bash
-sudo chmod +x /usr/local/bin/backup-camillaeq.sh
+sudo chmod +x /usr/local/bin/backup-astracamillagui.sh
 ```
 
 **Schedule via cron:**
@@ -123,7 +123,7 @@ sudo crontab -e
 Add:
 ```
 # Daily backup at 3 AM
-0 3 * * * /usr/local/bin/backup-camillaeq.sh
+0 3 * * * /usr/local/bin/backup-astracamillagui.sh
 ```
 
 ---
@@ -133,16 +133,16 @@ Add:
 **Rsync to remote server:**
 ```bash
 #!/bin/bash
-# /usr/local/bin/backup-camillaeq-remote.sh
+# /usr/local/bin/backup-astracamillagui-remote.sh
 
 rsync -avz --delete \
-  /opt/camillaeq/data/ \
-  user@backup-server:/backups/camillaeq/data/
+  /opt/astracamillagui/data/ \
+  user@backup-server:/backups/astracamillagui/data/
 
 rsync -avz \
-  /etc/camillaeq/ \
-  /etc/systemd/system/camillaeq.service \
-  user@backup-server:/backups/camillaeq/config/
+  /etc/astracamillagui/ \
+  /etc/systemd/system/astracamillagui.service \
+  user@backup-server:/backups/astracamillagui/config/
 ```
 
 **Setup SSH key:**
@@ -163,26 +163,26 @@ sudo ssh-copy-id user@backup-server
 **Steps:**
 ```bash
 # 1. Stop service (if running)
-sudo systemctl stop camillaeq
+sudo systemctl stop astracamillagui
 
 # 2. Extract data backup
 cd /
-sudo tar xzf /path/to/camillaeq-data-YYYYMMDD.tar.gz
+sudo tar xzf /path/to/astracamillagui-data-YYYYMMDD.tar.gz
 
 # 3. Extract config backup
-sudo tar xzf /path/to/camillaeq-config-YYYYMMDD.tar.gz
+sudo tar xzf /path/to/astracamillagui-config-YYYYMMDD.tar.gz
 
 # 4. Set ownership
-sudo chown -R camillaeq:camillaeq /opt/camillaeq/data
+sudo chown -R astracamillagui:astracamillagui /opt/astracamillagui/data
 
 # 5. Reload systemd (if service file changed)
 sudo systemctl daemon-reload
 
 # 6. Start service
-sudo systemctl start camillaeq
+sudo systemctl start astracamillagui
 
 # 7. Verify
-sudo systemctl status camillaeq
+sudo systemctl status astracamillagui
 curl http://localhost:3000/health
 ```
 
@@ -197,14 +197,14 @@ curl http://localhost:3000/health
 # Extract to temp location
 mkdir /tmp/restore
 cd /tmp/restore
-tar xzf /path/to/camillaeq-data-YYYYMMDD.tar.gz
+tar xzf /path/to/astracamillagui-data-YYYYMMDD.tar.gz
 
 # Copy specific preset
-sudo cp opt/camillaeq/data/configs/my-preset.json \
-  /opt/camillaeq/data/configs/
+sudo cp opt/astracamillagui/data/configs/my-preset.json \
+  /opt/astracamillagui/data/configs/
 
 # Set ownership
-sudo chown camillaeq:camillaeq /opt/camillaeq/data/configs/my-preset.json
+sudo chown astracamillagui:astracamillagui /opt/astracamillagui/data/configs/my-preset.json
 
 # No restart needed (loaded on-demand)
 ```
@@ -218,20 +218,20 @@ sudo chown camillaeq:camillaeq /opt/camillaeq/data/configs/my-preset.json
 **From backup:**
 ```bash
 # Stop service
-sudo systemctl stop camillaeq
+sudo systemctl stop astracamillagui
 
 # Extract recovery cache
 cd /tmp
-tar xzf /path/to/camillaeq-data-YYYYMMDD.tar.gz opt/camillaeq/data/latest_dsp_state.json
+tar xzf /path/to/astracamillagui-data-YYYYMMDD.tar.gz opt/astracamillagui/data/latest_dsp_state.json
 
 # Copy to live location
-sudo cp opt/camillaeq/data/latest_dsp_state.json /opt/camillaeq/data/
+sudo cp opt/astracamillagui/data/latest_dsp_state.json /opt/astracamillagui/data/
 
 # Set ownership
-sudo chown camillaeq:camillaeq /opt/camillaeq/data/latest_dsp_state.json
+sudo chown astracamillagui:astracamillagui /opt/astracamillagui/data/latest_dsp_state.json
 
 # Start service
-sudo systemctl start camillaeq
+sudo systemctl start astracamillagui
 ```
 
 ---
@@ -245,10 +245,10 @@ sudo systemctl start camillaeq
 # Extract to temp directory
 mkdir /tmp/backup-test
 cd /tmp/backup-test
-tar xzf /path/to/camillaeq-data-YYYYMMDD.tar.gz
+tar xzf /path/to/astracamillagui-data-YYYYMMDD.tar.gz
 
 # Verify JSON files are valid
-for f in opt/camillaeq/data/configs/*.json; do
+for f in opt/astracamillagui/data/configs/*.json; do
   if ! jq empty "$f" 2>/dev/null; then
     echo "Invalid JSON: $f"
   fi
@@ -266,7 +266,7 @@ rm -rf /tmp/backup-test
 **After restore:**
 ```bash
 # 1. Service running
-sudo systemctl status camillaeq
+sudo systemctl status astracamillagui
 # Expected: active (running)
 
 # 2. HTTP responsive
@@ -278,11 +278,11 @@ curl http://localhost:3000/api/configs
 # Expected: JSON array of configs
 
 # 4. Data directory permissions
-ls -la /opt/camillaeq/data
-# Expected: camillaeq:camillaeq ownership
+ls -la /opt/astracamillagui/data
+# Expected: astracamillagui:astracamillagui ownership
 
 # 5. Check logs for errors
-sudo journalctl -u camillaeq -n 50 --no-pager
+sudo journalctl -u astracamillagui -n 50 --no-pager
 # Expected: No errors, "Server listening" message
 ```
 
@@ -299,16 +299,16 @@ sudo journalctl -u camillaeq -n 50 --no-pager
 **Recovery:**
 ```bash
 # Stop service
-sudo systemctl stop camillaeq
+sudo systemctl stop astracamillagui
 
 # Restore from backup
-sudo tar xzf /path/to/backup.tar.gz opt/camillaeq/data
+sudo tar xzf /path/to/backup.tar.gz opt/astracamillagui/data
 
 # Set ownership
-sudo chown -R camillaeq:camillaeq /opt/camillaeq/data
+sudo chown -R astracamillagui:astracamillagui /opt/astracamillagui/data
 
 # Start service
-sudo systemctl start camillaeq
+sudo systemctl start astracamillagui
 ```
 
 **Verify:** Presets page shows saved presets
@@ -323,19 +323,19 @@ sudo systemctl start camillaeq
 
 **Recovery Option 1 - From backup:**
 ```bash
-sudo systemctl stop camillaeq
-sudo tar xzf /path/to/backup.tar.gz opt/camillaeq/data/latest_dsp_state.json
-sudo chown camillaeq:camillaeq /opt/camillaeq/data/latest_dsp_state.json
-sudo systemctl start camillaeq
+sudo systemctl stop astracamillagui
+sudo tar xzf /path/to/backup.tar.gz opt/astracamillagui/data/latest_dsp_state.json
+sudo chown astracamillagui:astracamillagui /opt/astracamillagui/data/latest_dsp_state.json
+sudo systemctl start astracamillagui
 ```
 
 **Recovery Option 2 - Delete and recreate:**
 ```bash
 # Delete corrupt file
-sudo rm /opt/camillaeq/data/latest_dsp_state.json
+sudo rm /opt/astracamillagui/data/latest_dsp_state.json
 
 # Service will create new empty cache on next write
-sudo systemctl restart camillaeq
+sudo systemctl restart astracamillagui
 ```
 
 **Note:** Recovery cache is best-effort. Losing it is non-fatal.
@@ -352,13 +352,13 @@ sudo systemctl restart camillaeq
 ```bash
 # 1. Replace SD card
 # 2. Reinstall OS
-# 3. Reinstall CamillaEQ (see linux-services.md)
+# 3. Reinstall AstraCamillaGui (see linux-services.md)
 # 4. Restore data from backup:
 
-sudo systemctl stop camillaeq
+sudo systemctl stop astracamillagui
 sudo tar xzf /path/to/backup.tar.gz
-sudo chown -R camillaeq:camillaeq /opt/camillaeq/data
-sudo systemctl start camillaeq
+sudo chown -R astracamillagui:astracamillagui /opt/astracamillagui/data
+sudo systemctl start astracamillagui
 ```
 
 **Prevention:** Regular backups to USB or network storage
@@ -379,13 +379,13 @@ cd /tmp/restore
 tar xzf /path/to/backup.tar.gz
 
 # List available presets
-ls opt/camillaeq/data/configs/
+ls opt/astracamillagui/data/configs/
 
 # Copy specific preset
-sudo cp opt/camillaeq/data/configs/my-preset.json \
-  /opt/camillaeq/data/configs/
+sudo cp opt/astracamillagui/data/configs/my-preset.json \
+  /opt/astracamillagui/data/configs/
 
-sudo chown camillaeq:camillaeq /opt/camillaeq/data/configs/my-preset.json
+sudo chown astracamillagui:astracamillagui /opt/astracamillagui/data/configs/my-preset.json
 
 # Clean up
 rm -rf /tmp/restore
@@ -404,7 +404,7 @@ rm -rf /tmp/restore
 **Recovery:**
 ```bash
 # 1. Stop service
-sudo systemctl stop camillaeq
+sudo systemctl stop astracamillagui
 
 # 2. Restore application backup (if available)
 sudo tar xzf /path/to/app-backup.tar.gz
@@ -414,15 +414,15 @@ cd /path/to/source
 git checkout v1.0.0  # or last known-good version
 npm install
 npm run build
-sudo cp -r server/dist /opt/camillaeq/server
-cd /opt/camillaeq
+sudo cp -r server/dist /opt/astracamillagui/server
+cd /opt/astracamillagui
 sudo npm ci --omit=dev
 
 # 4. Set ownership
-sudo chown -R camillaeq:camillaeq /opt/camillaeq
+sudo chown -R astracamillagui:astracamillagui /opt/astracamillagui
 
 # 5. Start service
-sudo systemctl start camillaeq
+sudo systemctl start astracamillagui
 ```
 
 ---
@@ -433,7 +433,7 @@ sudo systemctl start camillaeq
 
 **All presets:**
 ```bash
-cd /opt/camillaeq/data/configs
+cd /opt/astracamillagui/data/configs
 for f in *.json; do
   echo -n "Checking $f... "
   if jq empty "$f" 2>/dev/null; then
@@ -446,7 +446,7 @@ done
 
 **Recovery cache:**
 ```bash
-jq empty /opt/camillaeq/data/latest_dsp_state.json \
+jq empty /opt/astracamillagui/data/latest_dsp_state.json \
   && echo "OK" || echo "CORRUPT"
 ```
 
@@ -456,21 +456,21 @@ jq empty /opt/camillaeq/data/latest_dsp_state.json \
 
 ```bash
 # Data directory should be owned by service user
-ls -ld /opt/camillaeq/data
-# Expected: drwxr-xr-x ... camillaeq camillaeq
+ls -ld /opt/astracamillagui/data
+# Expected: drwxr-xr-x ... astracamillagui astracamillagui
 
 # Configs should be readable/writable by service
-ls -l /opt/camillaeq/data/configs/
-# Expected: -rw-r--r-- ... camillaeq camillaeq
+ls -l /opt/astracamillagui/data/configs/
+# Expected: -rw-r--r-- ... astracamillagui astracamillagui
 ```
 
 **Fix permissions:**
 ```bash
-sudo chown -R camillaeq:camillaeq /opt/camillaeq/data
-sudo chmod 755 /opt/camillaeq/data
-sudo chmod 755 /opt/camillaeq/data/configs
-sudo chmod 644 /opt/camillaeq/data/configs/*.json
-sudo chmod 644 /opt/camillaeq/data/latest_dsp_state.json
+sudo chown -R astracamillagui:astracamillagui /opt/astracamillagui/data
+sudo chmod 755 /opt/astracamillagui/data
+sudo chmod 755 /opt/astracamillagui/data/configs
+sudo chmod 644 /opt/astracamillagui/data/configs/*.json
+sudo chmod 644 /opt/astracamillagui/data/latest_dsp_state.json
 ```
 
 ---
@@ -484,7 +484,7 @@ sudo chmod 644 /opt/camillaeq/data/latest_dsp_state.json
 **Procedure:**
 ```bash
 # 1. Create test environment (separate directory)
-sudo mkdir -p /tmp/restore-test/opt/camillaeq
+sudo mkdir -p /tmp/restore-test/opt/astracamillagui
 sudo mkdir -p /tmp/restore-test/etc
 
 # 2. Extract backup
@@ -492,11 +492,11 @@ cd /tmp/restore-test
 sudo tar xzf /path/to/backup.tar.gz
 
 # 3. Verify structure
-ls -R opt/camillaeq/data
-ls etc/camillaeq
+ls -R opt/astracamillagui/data
+ls etc/astracamillagui
 
 # 4. Validate JSON files
-for f in opt/camillaeq/data/configs/*.json; do
+for f in opt/astracamillagui/data/configs/*.json; do
   jq empty "$f" || echo "FAILED: $f"
 done
 
@@ -516,26 +516,26 @@ sudo rm -rf /tmp/restore-test
 **On old server:**
 ```bash
 # Create complete backup
-sudo tar czf camillaeq-migration.tar.gz \
-  /opt/camillaeq/data \
-  /etc/camillaeq \
-  /etc/systemd/system/camillaeq.service
+sudo tar czf astracamillagui-migration.tar.gz \
+  /opt/astracamillagui/data \
+  /etc/astracamillagui \
+  /etc/systemd/system/astracamillagui.service
 
 # Transfer to new server
-scp camillaeq-migration.tar.gz user@new-server:/tmp/
+scp astracamillagui-migration.tar.gz user@new-server:/tmp/
 ```
 
 **On new server:**
 ```bash
-# Install CamillaEQ (see linux-services.md)
+# Install AstraCamillaGui (see linux-services.md)
 # Then restore data:
 
-sudo systemctl stop camillaeq
+sudo systemctl stop astracamillagui
 cd /
-sudo tar xzf /tmp/camillaeq-migration.tar.gz
-sudo chown -R camillaeq:camillaeq /opt/camillaeq/data
+sudo tar xzf /tmp/astracamillagui-migration.tar.gz
+sudo chown -R astracamillagui:astracamillagui /opt/astracamillagui/data
 sudo systemctl daemon-reload
-sudo systemctl start camillaeq
+sudo systemctl start astracamillagui
 ```
 
 ---
@@ -545,7 +545,7 @@ sudo systemctl start camillaeq
 **Export single preset:**
 ```bash
 # Copy from server
-scp user@server:/opt/camillaeq/data/configs/my-preset.json ./
+scp user@server:/opt/astracamillagui/data/configs/my-preset.json ./
 
 # Share file (email, USB, etc.)
 ```
@@ -556,8 +556,8 @@ scp user@server:/opt/camillaeq/data/configs/my-preset.json ./
 scp my-preset.json user@server:/tmp/
 
 # On server:
-sudo cp /tmp/my-preset.json /opt/camillaeq/data/configs/
-sudo chown camillaeq:camillaeq /opt/camillaeq/data/configs/my-preset.json
+sudo cp /tmp/my-preset.json /opt/astracamillagui/data/configs/
+sudo chown astracamillagui:astracamillagui /opt/astracamillagui/data/configs/my-preset.json
 ```
 
 **No restart needed** - appears immediately in UI
@@ -583,10 +583,10 @@ sudo journalctl --vacuum-size=100M
 sudo apt clean
 
 # Move data directory to larger partition (if needed)
-sudo systemctl stop camillaeq
-sudo mv /opt/camillaeq/data /mnt/usb/camillaeq-data
-sudo ln -s /mnt/usb/camillaeq-data /opt/camillaeq/data
-sudo systemctl start camillaeq
+sudo systemctl stop astracamillagui
+sudo mv /opt/astracamillagui/data /mnt/usb/astracamillagui-data
+sudo ln -s /mnt/usb/astracamillagui-data /opt/astracamillagui/data
+sudo systemctl start astracamillagui
 ```
 
 ---
@@ -600,15 +600,15 @@ sudo systemctl start camillaeq
 **Recovery:**
 ```bash
 # Fix ownership
-sudo chown -R camillaeq:camillaeq /opt/camillaeq/data
+sudo chown -R astracamillagui:astracamillagui /opt/astracamillagui/data
 
 # Fix permissions
-sudo chmod 755 /opt/camillaeq/data
-sudo chmod 755 /opt/camillaeq/data/configs
-sudo chmod 644 /opt/camillaeq/data/configs/*.json
+sudo chmod 755 /opt/astracamillagui/data
+sudo chmod 755 /opt/astracamillagui/data/configs
+sudo chmod 644 /opt/astracamillagui/data/configs/*.json
 
 # Restart service
-sudo systemctl restart camillaeq
+sudo systemctl restart astracamillagui
 ```
 
 ---
@@ -622,17 +622,17 @@ sudo systemctl restart camillaeq
 **Recovery:**
 ```bash
 # Stop service
-sudo systemctl stop camillaeq
+sudo systemctl stop astracamillagui
 
 # Recreate structure
-sudo mkdir -p /opt/camillaeq/data/configs
-sudo chown -R camillaeq:camillaeq /opt/camillaeq/data
+sudo mkdir -p /opt/astracamillagui/data/configs
+sudo chown -R astracamillagui:astracamillagui /opt/astracamillagui/data
 
 # Restore from backup (if available)
-sudo tar xzf /path/to/backup.tar.gz opt/camillaeq/data
+sudo tar xzf /path/to/backup.tar.gz opt/astracamillagui/data
 
 # Start service
-sudo systemctl start camillaeq
+sudo systemctl start astracamillagui
 ```
 
 ---
@@ -661,10 +661,10 @@ sudo systemctl start camillaeq
 BACKUP_DIR=/mnt/usb/backups
 
 # Keep last 7 daily backups
-find $BACKUP_DIR -name "camillaeq-data-*.tar.gz" -mtime +7 -delete
+find $BACKUP_DIR -name "astracamillagui-data-*.tar.gz" -mtime +7 -delete
 
 # Keep last 30 days of config backups
-find $BACKUP_DIR -name "camillaeq-config-*.tar.gz" -mtime +30 -delete
+find $BACKUP_DIR -name "astracamillagui-config-*.tar.gz" -mtime +30 -delete
 
 echo "$(date): Cleanup completed" >> /var/log/backup-cleanup.log
 ```

@@ -30,7 +30,7 @@ All UI state must eventually converge to what CamillaDSP confirms.
 - Volume level
 - Spectrum data (real-time)
 
-**Persistence:** CamillaDSP responsibility (not CamillaEQ)
+**Persistence:** CamillaDSP responsibility (not AstraCamillaGui)
 
 **Access:** WebSocket API only
 
@@ -279,7 +279,7 @@ All UI state must eventually converge to what CamillaDSP confirms.
 
 ### Problem
 CamillaDSP only stores **active** filters in pipeline steps.  
-When user disables a filter in CamillaEQ, it must be removed from the pipeline.  
+When user disables a filter in AstraCamillaGui, it must be removed from the pipeline.  
 But we need to remember **where** it was, so re-enabling puts it back in the right position.
 
 ### Solution

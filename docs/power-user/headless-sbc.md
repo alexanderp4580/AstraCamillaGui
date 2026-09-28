@@ -1,6 +1,6 @@
 # Headless SBC Deployment
 
-**Intended audience:** Power users deploying CamillaEQ on headless single-board computers.
+**Intended audience:** Power users deploying AstraCamillaGui on headless single-board computers.
 
 **This document does not cover:** Development setup or desktop installations.
 
@@ -29,7 +29,7 @@
 
 **Minimum:** 1 GHz single-core ARM processor
 
-**Recommended:** Multi-core (for concurrent CamillaDSP + CamillaEQ)
+**Recommended:** Multi-core (for concurrent CamillaDSP + AstraCamillaGui)
 
 **Usage patterns:**
 - **Idle:** <5% CPU (both services)
@@ -50,7 +50,7 @@
 **Breakdown:**
 - System + services: ~200-300 MB
 - CamillaDSP: ~50-100 MB (depends on config complexity)
-- CamillaEQ server: ~50-100 MB
+- AstraCamillaGui server: ~50-100 MB
 - **Free for cache/buffers:** ~200+ MB
 
 **If low on RAM:**
@@ -120,15 +120,15 @@ sudo apt install -y build-essential git
 **On development machine (if cross-building):**
 ```bash
 # Build application
-cd /path/to/camillaeq
+cd /path/to/astracamillagui
 npm install
 npm run build
 
 # Create tarball
-tar czf camillaeq-dist.tar.gz server/dist package.json package-lock.json
+tar czf astracamillagui-dist.tar.gz server/dist package.json package-lock.json
 
 # Copy to SBC
-scp camillaeq-dist.tar.gz user@sbc-ip:/tmp/
+scp astracamillagui-dist.tar.gz user@sbc-ip:/tmp/
 ```
 
 ---
@@ -139,8 +139,8 @@ scp camillaeq-dist.tar.gz user@sbc-ip:/tmp/
 ```bash
 # Clone repository
 cd /tmp
-git clone https://github.com/AlfredJKwack/camillaEQ.git
-cd camillaEQ
+git clone https://github.com/alexanderp4580/AstraCamillaGui.git
+cd AstraCamillaGui
 
 # Build (may take 30-60 minutes on slow SBCs)
 npm install
@@ -151,46 +151,46 @@ npm run build
 ```bash
 # Extract
 cd /tmp
-tar xzf camillaeq-dist.tar.gz
+tar xzf astracamillagui-dist.tar.gz
 ```
 
 **Install to /opt:**
 ```bash
 # Create user
-sudo useradd -r -s /bin/false -m -d /opt/camillaeq camillaeq
+sudo useradd -r -s /bin/false -m -d /opt/astracamillagui astracamillagui
 
 # Copy files
-sudo mkdir -p /opt/camillaeq
-sudo cp -r server/dist /opt/camillaeq/server
-sudo cp package.json /opt/camillaeq/
-sudo cp package-lock.json /opt/camillaeq/
+sudo mkdir -p /opt/astracamillagui
+sudo cp -r server/dist /opt/astracamillagui/server
+sudo cp package.json /opt/astracamillagui/
+sudo cp package-lock.json /opt/astracamillagui/
 
 # Install production dependencies
-cd /opt/camillaeq
+cd /opt/astracamillagui
 sudo npm ci --omit=dev
 
 # Create data directory
-sudo mkdir -p /opt/camillaeq/data/configs
+sudo mkdir -p /opt/astracamillagui/data/configs
 
 # Set ownership
-sudo chown -R camillaeq:camillaeq /opt/camillaeq
+sudo chown -R astracamillagui:astracamillagui /opt/astracamillagui
 ```
 
 **Configure and start service:**
 ```bash
 # Copy service files
-cd /tmp/camillaEQ  # or wherever source is
-sudo cp deploy/systemd/camillaeq.service /etc/systemd/system/
-sudo mkdir -p /etc/camillaeq
-sudo cp deploy/systemd/camillaeq.env.example /etc/camillaeq/camillaeq.env
+cd /tmp/AstraCamillaGui  # or wherever source is
+sudo cp deploy/systemd/astracamillagui.service /etc/systemd/system/
+sudo mkdir -p /etc/astracamillagui
+sudo cp deploy/systemd/astracamillagui.env.example /etc/astracamillagui/astracamillagui.env
 
 # Enable and start
 sudo systemctl daemon-reload
-sudo systemctl enable camillaeq
-sudo systemctl start camillaeq
+sudo systemctl enable astracamillagui
+sudo systemctl start astracamillagui
 
 # Verify
-sudo systemctl status camillaeq
+sudo systemctl status astracamillagui
 ```
 
 ---
@@ -279,14 +279,14 @@ http://192.168.1.100:3000
 
 ```bash
 # Check if service is enabled
-systemctl is-enabled camillaeq
+systemctl is-enabled astracamillagui
 
 # Should output: enabled
 ```
 
 **If not enabled:**
 ```bash
-sudo systemctl enable camillaeq
+sudo systemctl enable astracamillagui
 ```
 
 ---
@@ -296,7 +296,7 @@ sudo systemctl enable camillaeq
 **Recommended startup order:**
 1. Network (wait for network-online.target)
 2. CamillaDSP
-3. CamillaEQ
+3. AstraCamillaGui
 
 **Enforce in service file:**
 ```ini
@@ -311,7 +311,7 @@ Wants=network-online.target camilladsp.service
 
 ### Device Configuration Wizard
 
-CamillaEQ includes an interactive CLI wizard to help generate valid CamillaDSP device configurations for macOS (CoreAudio) and Linux (ALSA).
+AstraCamillaGui includes an interactive CLI wizard to help generate valid CamillaDSP device configurations for macOS (CoreAudio) and Linux (ALSA).
 
 **Location:** `tools/camilladsp-device-wizard.mjs`
 
@@ -324,7 +324,7 @@ CamillaEQ includes an interactive CLI wizard to help generate valid CamillaDSP d
 
 **Usage:**
 ```bash
-# From CamillaEQ project root
+# From AstraCamillaGui project root
 node tools/camilladsp-device-wizard.mjs
 
 # With custom output path
@@ -385,7 +385,7 @@ sudo apt install -y ufw
 # Allow SSH (important!)
 sudo ufw allow 22/tcp
 
-# Allow CamillaEQ
+# Allow AstraCamillaGui
 sudo ufw allow 3000/tcp
 
 # Allow CamillaDSP
@@ -481,11 +481,11 @@ sudo mount -a
 ```bash
 # Mount USB drive at /mnt/usb
 # Move data
-sudo mv /opt/camillaeq/data /mnt/usb/camillaeq-data
-sudo ln -s /mnt/usb/camillaeq-data /opt/camillaeq/data
+sudo mv /opt/astracamillagui/data /mnt/usb/astracamillagui-data
+sudo ln -s /mnt/usb/astracamillagui-data /opt/astracamillagui/data
 
-# Or update CONFIG_DIR in /etc/camillaeq/camillaeq.env
-CONFIG_DIR=/mnt/usb/camillaeq-data
+# Or update CONFIG_DIR in /etc/astracamillagui/astracamillagui.env
+CONFIG_DIR=/mnt/usb/astracamillagui-data
 ```
 
 ---
@@ -530,12 +530,12 @@ sudo systemctl restart ssh
 
 **Set friendly hostname:**
 ```bash
-sudo hostnamectl set-hostname camillaeq-sbc
+sudo hostnamectl set-hostname astracamillagui-sbc
 ```
 
 **Access via hostname** (if mDNS enabled):
 ```
-http://camillaeq-sbc.local:3000
+http://astracamillagui-sbc.local:3000
 ```
 
 ---
@@ -565,18 +565,18 @@ vcgencmd measure_temp
 **Simple uptime check:**
 ```bash
 #!/bin/bash
-# /usr/local/bin/check-camillaeq.sh
+# /usr/local/bin/check-astracamillagui.sh
 
-if ! systemctl is-active --quiet camillaeq; then
-  echo "CamillaEQ is down, restarting..."
-  systemctl start camillaeq
+if ! systemctl is-active --quiet astracamillagui; then
+  echo "AstraCamillaGui is down, restarting..."
+  systemctl start astracamillagui
 fi
 ```
 
 **Add to cron:**
 ```bash
 # Check every 5 minutes
-*/5 * * * * /usr/local/bin/check-camillaeq.sh
+*/5 * * * * /usr/local/bin/check-astracamillagui.sh
 ```
 
 ---
@@ -584,9 +584,9 @@ fi
 ## Backup Strategy
 
 **What to back up:**
-- `/opt/camillaeq/data/` - Presets and recovery cache
-- `/etc/camillaeq/` - Environment configuration
-- `/etc/systemd/system/camillaeq.service` - Service file
+- `/opt/astracamillagui/data/` - Presets and recovery cache
+- `/etc/astracamillagui/` - Environment configuration
+- `/etc/systemd/system/astracamillagui.service` - Service file
 
 **Simple backup script:**
 ```bash
@@ -595,14 +595,14 @@ BACKUP_DIR=/mnt/usb/backups
 DATE=$(date +%Y%m%d)
 
 mkdir -p $BACKUP_DIR
-tar czf $BACKUP_DIR/camillaeq-data-$DATE.tar.gz /opt/camillaeq/data
-tar czf $BACKUP_DIR/camillaeq-config-$DATE.tar.gz /etc/camillaeq /etc/systemd/system/camillaeq.service
+tar czf $BACKUP_DIR/astracamillagui-data-$DATE.tar.gz /opt/astracamillagui/data
+tar czf $BACKUP_DIR/astracamillagui-config-$DATE.tar.gz /etc/astracamillagui /etc/systemd/system/astracamillagui.service
 ```
 
 **Schedule via cron:**
 ```bash
 # Daily backup at 3 AM
-0 3 * * * /usr/local/bin/backup-camillaeq.sh
+0 3 * * * /usr/local/bin/backup-astracamillagui.sh
 ```
 
 ---
@@ -613,7 +613,7 @@ tar czf $BACKUP_DIR/camillaeq-config-$DATE.tar.gz /etc/camillaeq /etc/systemd/sy
 
 **Check dependencies:**
 ```bash
-sudo systemctl status camillaeq
+sudo systemctl status astracamillagui
 # Look for "network-online.target not available"
 ```
 

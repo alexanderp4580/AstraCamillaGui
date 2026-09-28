@@ -1,6 +1,6 @@
 # Quick Start
 
-**Intended audience:** End users installing and running CamillaEQ for the first time.
+**Intended audience:** End users installing and running AstraCamillaGui for the first time.
 
 **This document does not cover:** Production deployment (see Power User docs).
 
@@ -21,8 +21,8 @@ Before starting, ensure you have:
 ### 1. Clone and Install Dependencies
 
 ```bash
-git clone https://github.com/AlfredJKwack/camillaEQ.git
-cd camillaEQ
+git clone https://github.com/alexanderp4580/AstraCamillaGui.git
+cd AstraCamillaGui
 npm install
 ```
 
@@ -87,7 +87,7 @@ Default: `1235`
 
 ### 3. Optional: Enable Auto-Reconnect
 
-Check **"Auto-reconnect on page load"** to automatically reconnect when you reload the page or navigate back to CamillaEQ.
+Check **"Auto-reconnect on page load"** to automatically reconnect when you reload the page or navigate back to AstraCamillaGui.
 
 ### 4. Click Connect
 
@@ -156,7 +156,7 @@ A fresh CamillaDSP install often starts with an empty or minimal config.
 
 ### 3. Changes Upload Automatically
 
-CamillaEQ uploads your changes to CamillaDSP after a 200ms pause in editing (debounced).
+AstraCamillaGui uploads your changes to CamillaDSP after a 200ms pause in editing (debounced).
 
 **Upload status indicator** (top-right corner):
 - **Blue spinner:** Uploading

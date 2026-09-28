@@ -1,16 +1,16 @@
 # Caddy Reverse Proxy Configuration
 
-This directory contains example Caddy configurations for serving CamillaEQ.
+This directory contains example Caddy configurations for serving AstraCamillaGui.
 
 ## HTTP-Only Configuration (for WebSocket compatibility)
 
-When CamillaEQ needs to connect to CamillaDSP over plain `ws://` (non-TLS WebSockets), the UI must be served over HTTP to avoid mixed-content blocking by modern browsers.
+When AstraCamillaGui needs to connect to CamillaDSP over plain `ws://` (non-TLS WebSockets), the UI must be served over HTTP to avoid mixed-content blocking by modern browsers.
 
 ### Example: Single HTTP-only site
 
 ```caddyfile
 # Caddyfile
-http://camillaeq.his.house {
+http://astracamillagui.his.house {
 	reverse_proxy 127.0.0.1:3000
 
 	# Ensure no HSTS is sent
@@ -29,7 +29,7 @@ If you want users who type `https://` to be redirected to `http://`:
 # Caddyfile
 
 # HTTPS site that redirects to HTTP
-camillaeq.his.house {
+astracamillagui.his.house {
   redir http://{host}{uri} 301
   
   header {
@@ -38,7 +38,7 @@ camillaeq.his.house {
 }
 
 # HTTP site (actual service)
-http://camillaeq.his.house {
+http://astracamillagui.his.house {
   reverse_proxy 127.0.0.1:3000
   
   header {
@@ -56,14 +56,14 @@ http://camillaeq.his.house {
 
 ## Read-Only Mode (Public Exposure)
 
-When exposing CamillaEQ publicly, enable read-only mode to prevent unauthorized persistence changes:
+When exposing AstraCamillaGui publicly, enable read-only mode to prevent unauthorized persistence changes:
 
-### CamillaEQ `.env`
+### AstraCamillaGui `.env`
 ```bash
 SERVER_HOST=127.0.0.1
 SERVER_PORT=3000
 SERVER_READ_ONLY=true
-CONFIG_DIR=/opt/camillaeq/data
+CONFIG_DIR=/opt/astracamillagui/data
 ```
 
 This configuration:
@@ -81,7 +81,7 @@ This configuration:
 - CamillaDSP should also be firewalled if not intended for public access
 
 ### When using HTTPS
-- If you serve CamillaEQ over HTTPS, CamillaDSP must use `wss://` (WebSocket Secure)
+- If you serve AstraCamillaGui over HTTPS, CamillaDSP must use `wss://` (WebSocket Secure)
 - This requires a TLS terminator/proxy in front of CamillaDSP
 - Mixed content (HTTPS page + WS connection) is blocked by all modern browsers
 
@@ -91,17 +91,17 @@ This configuration:
 
 ### Verify HTTP-only is working
 ```bash
-curl http://camillaeq.his.house/health
+curl http://astracamillagui.his.house/health
 # Should return: {"status":"ok"}
 ```
 
 ### Verify read-only mode
 ```bash
 # This should succeed (GET is allowed)
-curl http://camillaeq.his.house/api/configs
+curl http://astracamillagui.his.house/api/configs
 
 # This should fail with 403 (PUT is blocked)
-curl -X PUT http://camillaeq.his.house/api/state/latest \
+curl -X PUT http://astracamillagui.his.house/api/state/latest \
   -H 'Content-Type: application/json' \
   -d '{"devices":{},"filters":{},"mixers":{},"pipeline":[]}'
 

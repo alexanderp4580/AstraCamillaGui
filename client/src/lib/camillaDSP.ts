@@ -156,7 +156,7 @@ export class CamillaDSP {
   // Default mixer configuration
   private readonly defaultMixer = {
     recombine: {
-      description: 'CamillaEQ Default Mixer',
+      description: 'AstraCamillaGui Default Mixer',
       channels: { in: 2, out: 2 },
       mapping: [
         {
@@ -184,7 +184,7 @@ export class CamillaDSP {
     {
       type: 'Mixer',
       name: 'recombine',
-      description: 'CamillaEQ Default Mixer',
+      description: 'AstraCamillaGui Default Mixer',
       bypassed: false,
     },
     {

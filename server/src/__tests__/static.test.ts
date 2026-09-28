@@ -27,7 +27,7 @@ describe('Production Static Serving', () => {
     // Create minimal index.html
     await fs.writeFile(
       join(tempDir, 'index.html'),
-      '<!DOCTYPE html><html><head><title>CamillaEQ</title></head><body><div id="app">Test</div></body></html>'
+      '<!DOCTYPE html><html><head><title>AstraCamillaGui</title></head><body><div id="app">Test</div></body></html>'
     );
 
     // Create a static asset

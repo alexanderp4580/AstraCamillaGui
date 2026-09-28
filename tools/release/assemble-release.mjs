@@ -39,7 +39,7 @@ const rootPkgPath = join(ROOT, 'package.json');
 const rootPkg = JSON.parse(await readFile(rootPkgPath, 'utf-8'));
 const version = versionArg || `v${rootPkg.version}`;
 
-const RELEASE_NAME = `camillaeq-${version}`;
+const RELEASE_NAME = `astracamillagui-${version}`;
 const RELEASE_DIR = join(ROOT, 'release', RELEASE_NAME);
 const RELEASE_TARBALL = join(ROOT, 'release', `${RELEASE_NAME}.tar.gz`);
 
@@ -147,7 +147,7 @@ console.log(`✓ Files copied to ${RELEASE_DIR}\n`);
 console.log('📝 Step 5/8: Generating runtime package.json...');
 
 const runtimePkg = {
-  name: 'camillaeq',
+  name: 'astracamillagui',
   version: version.replace(/^v/, ''),
   description: 'CamillaDSP graphical equalizer interface',
   type: 'module',

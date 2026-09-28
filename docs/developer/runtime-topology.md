@@ -12,7 +12,7 @@
 ┌────────────────────────────────────────────────────────────┐
 │                         Browser                            │
 │  ┌───────────────────────────────────────────────────────┐ │
-│  │         CamillaEQ Frontend (Svelte/TS)                │ │
+│  │         AstraCamillaGui Frontend (Svelte/TS)                │ │
 │  │                                                       │ │
 │  │  ┌──────────┐  ┌──────────┐  ┌────────────────────┐   │ │
 │  │  │ EqPage   │  │Pipeline  │  │ ConnectPage        │   │ │
@@ -55,7 +55,7 @@
          Separate process (HTTP only):
 
          ┌────────────────────────────┐
-         │  CamillaEQ Backend Server  │
+         │  AstraCamillaGui Backend Server  │
          │      (Node.js/Fastify)     │
          │                            │
          │  /api/configs/*            │
@@ -140,7 +140,7 @@
 
 ---
 
-### Backend HTTP API (Browser → CamillaEQ Server :3000)
+### Backend HTTP API (Browser → AstraCamillaGui Server :3000)
 **Purpose:** Preset library, recovery cache
 
 **Endpoints:**
@@ -203,7 +203,7 @@
 ## Why Backend Is Not a Proxy
 
 ### Design Decision
-**CamillaEQ server does NOT proxy WebSocket connections.**
+**AstraCamillaGui server does NOT proxy WebSocket connections.**
 
 **Rationale:**
 1. **Simplicity:** Direct browser-to-DSP connections eliminate a network hop
@@ -244,7 +244,7 @@
 - Typically same LAN subnet
 - No TLS (plaintext WebSocket)
 
-### Browser → CamillaEQ Server
+### Browser → AstraCamillaGui Server
 - HTTP access to backend port (default: 3000)
 - Can be different machine than CamillaDSP
 - No TLS in default config (add via reverse proxy if needed)

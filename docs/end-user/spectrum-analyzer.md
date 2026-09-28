@@ -21,10 +21,10 @@ The spectrum analyzer displays **per-frequency-bin peak levels in dBFS** returne
 
 ### It Does Not Automatically Show Pre/Post EQ
 
-The **Pre/Post buttons** in CamillaEQ change **visualization colors only**.
+The **Pre/Post buttons** in AstraCamillaGui change **visualization colors only**.
 
 **Why this is display-only today:**
-- CamillaEQ polls the spectrum socket via `GetPlaybackSignalPeak`
+- AstraCamillaGui polls the spectrum socket via `GetPlaybackSignalPeak`
 - It does not reconfigure or rewire CamillaDSP's spectrum pipeline
 - The spectrum data comes from wherever the spectrum port is wired
 
@@ -33,7 +33,7 @@ The **Pre/Post buttons** in CamillaEQ change **visualization colors only**.
 To actually see pre-EQ vs post-EQ signals:
 - You must manually configure CamillaDSP with appropriate spectrum pipeline placement
 - The spectrum port must be wired to the desired signal point
-- This requires CamillaDSP configuration knowledge beyond CamillaEQ's scope
+- This requires CamillaDSP configuration knowledge beyond AstraCamillaGui's scope
 
 **Default setup with the provided tool:** Spectrum shows post-EQ playback signal.
 
@@ -49,17 +49,17 @@ Before the spectrum overlay can display data:
 
 1. **CamillaDSP must be running** with a spectrum-capable configuration
 2. **Spectrum WebSocket must return ≥3 numeric values** (array of peak levels)
-3. CamillaEQ must be **connected to the spectrum port**
+3. AstraCamillaGui must be **connected to the spectrum port**
 
 ---
 
 ## Setup: Generate Spectrum Configuration
 
-CamillaEQ includes a tool to generate a CamillaDSP configuration with a bandpass filterbank for spectrum analysis.
+AstraCamillaGui includes a tool to generate a CamillaDSP configuration with a bandpass filterbank for spectrum analysis.
 
 ### 1. Generate Spectrum Config
 
-From the CamillaEQ project root:
+From the AstraCamillaGui project root:
 
 ```bash
 node tools/build-camillaDSP-spectrum-yml.js --bins 256 --q 18 --out spectrum-256.yml
@@ -120,7 +120,7 @@ camilladsp -p 1235 spectrum-256.yml
 
 ### 1. Connect to CamillaDSP
 
-Open CamillaEQ and navigate to the **Connection page**.
+Open AstraCamillaGui and navigate to the **Connection page**.
 
 ### 2. Enter Spectrum Port
 
@@ -274,7 +274,7 @@ The spectrum overlay polls CamillaDSP at **~10 Hz (every 100ms)**.
 
 **Spectrum WebSocket returns <3 values:**
 - The tool-generated config requires **256 playback channels** (or your chosen `--bins` value)
-- If CamillaDSP returns only 2 values (stereo), CamillaEQ rejects it as invalid
+- If CamillaDSP returns only 2 values (stereo), AstraCamillaGui rejects it as invalid
 
 **Spectrum config not loaded:**
 - Verify CamillaDSP is running with the spectrum config on the spectrum port
@@ -332,7 +332,7 @@ The spectrum overlay polls CamillaDSP at **~10 Hz (every 100ms)**.
 ### Pre/Post Mode Is Display-Only
 The **Pre/Post buttons change rendering colors**, not the data source. To actually visualize pre-EQ vs post-EQ:
 - Configure CamillaDSP spectrum pipeline to capture signal at desired point
-- This requires CamillaDSP configuration knowledge beyond CamillaEQ's scope
+- This requires CamillaDSP configuration knowledge beyond AstraCamillaGui's scope
 
 ### Spectrum Is Not FFT
 The filterbank approach has different characteristics than FFT:
@@ -347,4 +347,4 @@ This is **by design** and optimized for low CPU usage in CamillaDSP.
 ## Next Steps
 
 - [Troubleshooting](troubleshooting.md) - Fix common issues
-- [Overview](overview.md) - Understand CamillaEQ architecture
+- [Overview](overview.md) - Understand AstraCamillaGui architecture

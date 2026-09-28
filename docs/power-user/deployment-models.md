@@ -1,6 +1,6 @@
 # Deployment Models
 
-**Intended audience:** Power users deploying CamillaEQ on headless systems, SBCs, or production servers.
+**Intended audience:** Power users deploying AstraCamillaGui on headless systems, SBCs, or production servers.
 
 **This document does not cover:** Development setup or code architecture.
 
@@ -69,19 +69,19 @@ npm run start
 ┌─────────────────────────────────────────────┐
 │  Browser (Any device on LAN)                │
 │                                             │
-│  http://camillaeq-host:3000                 │
+│  http://astracamillagui-host:3000                 │
 │  ↓                                          │
 │  Loads UI (HTML/CSS/JS)                     │
 │                                             │
 │  Then establishes:                          │
 │  - WebSocket to CamillaDSP :1234 (control)  │
 │  - WebSocket to CamillaDSP :1235 (spectrum) │
-│  - HTTP REST to CamillaEQ :3000 (presets)   │
+│  - HTTP REST to AstraCamillaGui :3000 (presets)   │
 └─────────────────────────────────────────────┘
          │                    │
          │                    │
     ┌────▼────────┐     ┌─────▼──────────┐
-    │ CamillaEQ   │     │  CamillaDSP    │
+    │ AstraCamillaGui   │     │  CamillaDSP    │
     │ Server      │     │                │
     │ :3000       │     │  :1234 control │
     │ Node.js     │     │  :1235 spectrum│
@@ -90,24 +90,24 @@ npm run start
 
 **Key points:**
 - Browser connects **directly** to CamillaDSP (no proxy)
-- CamillaEQ server is **not** in the audio path
-- CamillaEQ server only handles presets + recovery cache
+- AstraCamillaGui server is **not** in the audio path
+- AstraCamillaGui server only handles presets + recovery cache
 
 ---
 
 ## Network Requirements
 
 ### Same Host Deployment
-**CamillaEQ + CamillaDSP on same machine**
+**AstraCamillaGui + CamillaDSP on same machine**
 
 **Browser must reach:**
-- `camillaeq-host:3000` (CamillaEQ server)
-- `camillaeq-host:1234` (CamillaDSP control)
-- `camillaeq-host:1235` (CamillaDSP spectrum)
+- `astracamillagui-host:3000` (AstraCamillaGui server)
+- `astracamillagui-host:1234` (CamillaDSP control)
+- `astracamillagui-host:1235` (CamillaDSP spectrum)
 
 **Firewall rules:**
 ```bash
-# Allow CamillaEQ HTTP
+# Allow AstraCamillaGui HTTP
 sudo ufw allow 3000/tcp
 
 # Allow CamillaDSP WebSockets
@@ -118,10 +118,10 @@ sudo ufw allow 1235/tcp
 ---
 
 ### Split Host Deployment
-**CamillaEQ on Host A, CamillaDSP on Host B**
+**AstraCamillaGui on Host A, CamillaDSP on Host B**
 
 **Browser must reach:**
-- `hostA:3000` (CamillaEQ server)
+- `hostA:3000` (AstraCamillaGui server)
 - `hostB:1234` (CamillaDSP control)
 - `hostB:1235` (CamillaDSP spectrum)
 
@@ -137,7 +137,7 @@ sudo ufw allow 1235/tcp
 
 ### Recommended Production Layout
 ```
-/opt/camillaeq/                    # Application root
+/opt/astracamillagui/                    # Application root
 ├── server/                        # Built server
 │   └── dist/
 │       ├── index.js               # Entry point
@@ -155,8 +155,8 @@ sudo ufw allow 1235/tcp
 
 **Ownership:**
 ```bash
-/opt/camillaeq:          camillaeq:camillaeq  (read-only for app)
-/opt/camillaeq/data:     camillaeq:camillaeq  (read-write)
+/opt/astracamillagui:          astracamillagui:astracamillagui  (read-only for app)
+/opt/astracamillagui/data:     astracamillagui:astracamillagui  (read-write)
 ```
 
 ---
@@ -166,15 +166,15 @@ sudo ufw allow 1235/tcp
 
 **Set environment variable:**
 ```bash
-# In /etc/camillaeq/camillaeq.env
-CONFIG_DIR=/mnt/storage/camillaeq-data
+# In /etc/astracamillagui/astracamillagui.env
+CONFIG_DIR=/mnt/storage/astracamillagui-data
 ```
 
 **Filesystem:**
 ```
-/opt/camillaeq/              # Application (read-only)
+/opt/astracamillagui/              # Application (read-only)
 /mnt/storage/
-  └── camillaeq-data/        # Data (writable)
+  └── astracamillagui-data/        # Data (writable)
       ├── configs/
       └── latest_dsp_state.json
 ```
@@ -189,15 +189,15 @@ CONFIG_DIR=/mnt/storage/camillaeq-data
 
 ### Default Ports
 ```
-CamillaEQ:     3000 (HTTP)
+AstraCamillaGui:     3000 (HTTP)
 CamillaDSP:    1234 (WebSocket control)
                1235 (WebSocket spectrum)
 ```
 
-### Change CamillaEQ Port
+### Change AstraCamillaGui Port
 **Via environment variable:**
 ```bash
-# In /etc/camillaeq/camillaeq.env
+# In /etc/astracamillagui/astracamillagui.env
 SERVER_PORT=8080
 ```
 
@@ -212,7 +212,7 @@ SERVER_PORT=8080 npm run start
 **Use case:** Behind reverse proxy, security hardening
 
 ```bash
-# In /etc/camillaeq/camillaeq.env
+# In /etc/astracamillagui/astracamillagui.env
 SERVER_HOST=127.0.0.1
 ```
 
@@ -259,7 +259,7 @@ SERVER_HOST=127.0.0.1
 ```nginx
 server {
     listen 80;
-    server_name camillaeq.local;
+    server_name astracamillagui.local;
     
     location / {
         proxy_pass http://127.0.0.1:3000;
@@ -335,26 +335,26 @@ server {
 ### In-Place Upgrade
 ```bash
 # Stop service
-sudo systemctl stop camillaeq
+sudo systemctl stop astracamillagui
 
 # Backup data
-sudo cp -r /opt/camillaeq/data /opt/camillaeq/data.backup
+sudo cp -r /opt/astracamillagui/data /opt/astracamillagui/data.backup
 
 # Update application files
 cd /path/to/source
 npm run build
-sudo cp -r server/dist /opt/camillaeq/server
-sudo chown -R camillaeq:camillaeq /opt/camillaeq/server
+sudo cp -r server/dist /opt/astracamillagui/server
+sudo chown -R astracamillagui:astracamillagui /opt/astracamillagui/server
 
 # Start service
-sudo systemctl start camillaeq
+sudo systemctl start astracamillagui
 ```
 
 **Rollback:**
 ```bash
-sudo systemctl stop camillaeq
-sudo cp -r /opt/camillaeq/server.backup /opt/camillaeq/server
-sudo systemctl start camillaeq
+sudo systemctl stop astracamillagui
+sudo cp -r /opt/astracamillagui/server.backup /opt/astracamillagui/server
+sudo systemctl start astracamillagui
 ```
 
 ---
@@ -372,7 +372,7 @@ sudo systemctl start camillaeq
 ## Multi-Instance Deployment
 
 ### Not Supported
-**CamillaEQ does not support:**
+**AstraCamillaGui does not support:**
 - Multiple instances sharing same data directory
 - Load balancing across instances
 - Concurrent writes to preset library

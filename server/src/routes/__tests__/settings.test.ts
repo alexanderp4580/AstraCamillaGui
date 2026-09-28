@@ -83,7 +83,7 @@ describe('Settings endpoint', () => {
   });
 
   it('should handle domain names correctly', async () => {
-    process.env.CAMILLA_CONTROL_WS_URL = 'ws://camillaeq.his.house:3146';
+    process.env.CAMILLA_CONTROL_WS_URL = 'ws://astracamillagui.his.house:3146';
 
     const response = await app.inject({
       method: 'GET',
@@ -93,7 +93,7 @@ describe('Settings endpoint', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body).toEqual({
-      camillaControlWsUrl: 'ws://camillaeq.his.house:3146',
+      camillaControlWsUrl: 'ws://astracamillagui.his.house:3146',
     });
   });
 });

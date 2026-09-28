@@ -1,6 +1,6 @@
 /**
  * App version store
- * Fetches and caches CamillaEQ version from backend
+ * Fetches and caches AstraCamillaGui version from backend
  */
 
 import { writable } from 'svelte/store';

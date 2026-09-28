@@ -15,7 +15,7 @@ export const logger = pino({
       }
     : undefined,
   base: {
-    service: 'camillaeq-server',
+    service: 'astracamillagui-server',
   },
   formatters: {
     level: (label) => {

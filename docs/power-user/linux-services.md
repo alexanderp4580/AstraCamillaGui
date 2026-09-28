@@ -1,6 +1,6 @@
 # Linux Services
 
-**Intended audience:** Power users installing CamillaEQ as a systemd service on Linux.
+**Intended audience:** Power users installing AstraCamillaGui as a systemd service on Linux.
 
 **This document does not cover:** Development setup or other init systems.
 
@@ -13,7 +13,7 @@
 **Required:**
 - Linux system with systemd (Debian, Ubuntu, Armbian, etc.)
 - Node.js 18+ installed
-- Built CamillaEQ application (`npm run build`)
+- Built AstraCamillaGui application (`npm run build`)
 - sudo/root access
 
 **Recommended:**
@@ -29,13 +29,13 @@
 Create unprivileged user to run the service:
 
 ```bash
-sudo useradd -r -s /bin/false -m -d /opt/camillaeq camillaeq
+sudo useradd -r -s /bin/false -m -d /opt/astracamillagui astracamillagui
 ```
 
 **Flags:**
 - `-r` - System user (no login shell needed)
 - `-s /bin/false` - No shell access
-- `-m -d /opt/camillaeq` - Create home directory at `/opt/camillaeq`
+- `-m -d /opt/astracamillagui` - Create home directory at `/opt/astracamillagui`
 
 ---
 
@@ -43,22 +43,22 @@ sudo useradd -r -s /bin/false -m -d /opt/camillaeq camillaeq
 
 ```bash
 # Build application on dev machine or same host
-cd /path/to/camillaeq-source
+cd /path/to/astracamillagui-source
 npm install
 npm run build
 
 # Copy built artifacts to installation directory
-sudo mkdir -p /opt/camillaeq
-sudo cp -r server/dist /opt/camillaeq/server
-sudo cp package.json /opt/camillaeq/
-sudo cp package-lock.json /opt/camillaeq/
+sudo mkdir -p /opt/astracamillagui
+sudo cp -r server/dist /opt/astracamillagui/server
+sudo cp package.json /opt/astracamillagui/
+sudo cp package-lock.json /opt/astracamillagui/
 
 # Install production dependencies
-cd /opt/camillaeq
+cd /opt/astracamillagui
 sudo npm ci --omit=dev
 
 # Set ownership
-sudo chown -R camillaeq:camillaeq /opt/camillaeq
+sudo chown -R astracamillagui:astracamillagui /opt/astracamillagui
 ```
 
 ---
@@ -67,12 +67,12 @@ sudo chown -R camillaeq:camillaeq /opt/camillaeq
 
 ```bash
 # Create writable data directory
-sudo mkdir -p /opt/camillaeq/data/configs
-sudo chown -R camillaeq:camillaeq /opt/camillaeq/data
-sudo chmod 755 /opt/camillaeq/data
+sudo mkdir -p /opt/astracamillagui/data/configs
+sudo chown -R astracamillagui:astracamillagui /opt/astracamillagui/data
+sudo chmod 755 /opt/astracamillagui/data
 ```
 
-**Note:** Only `/opt/camillaeq/data` needs write access. Application files are read-only.
+**Note:** Only `/opt/astracamillagui/data` needs write access. Application files are read-only.
 
 ---
 
@@ -80,17 +80,17 @@ sudo chmod 755 /opt/camillaeq/data
 
 ```bash
 # Create config directory
-sudo mkdir -p /etc/camillaeq
+sudo mkdir -p /etc/astracamillagui
 
 # Copy and customize environment file
-sudo cp /path/to/source/deploy/systemd/camillaeq.env.example /etc/camillaeq/camillaeq.env
+sudo cp /path/to/source/deploy/systemd/astracamillagui.env.example /etc/astracamillagui/astracamillagui.env
 
 # Set permissions (root owns config, service reads it)
-sudo chown root:root /etc/camillaeq/camillaeq.env
-sudo chmod 644 /etc/camillaeq/camillaeq.env
+sudo chown root:root /etc/astracamillagui/astracamillagui.env
+sudo chmod 644 /etc/astracamillagui/astracamillagui.env
 
 # Edit configuration
-sudo nano /etc/camillaeq/camillaeq.env
+sudo nano /etc/astracamillagui/astracamillagui.env
 ```
 
 **Key settings:**
@@ -108,16 +108,16 @@ LOG_LEVEL=info
 
 ```bash
 # Copy service file
-sudo cp /path/to/source/deploy/systemd/camillaeq.service /etc/systemd/system/
+sudo cp /path/to/source/deploy/systemd/astracamillagui.service /etc/systemd/system/
 
 # Reload systemd daemon
 sudo systemctl daemon-reload
 
 # Enable service (start on boot)
-sudo systemctl enable camillaeq
+sudo systemctl enable astracamillagui
 
 # Start service immediately
-sudo systemctl start camillaeq
+sudo systemctl start astracamillagui
 ```
 
 ---
@@ -126,20 +126,20 @@ sudo systemctl start camillaeq
 
 ```bash
 # Check service status
-sudo systemctl status camillaeq
+sudo systemctl status astracamillagui
 
 # Expected output:
-# ● camillaeq.service - CamillaEQ - CamillaDSP Graphical Equalizer Interface
-#    Loaded: loaded (/etc/systemd/system/camillaeq.service; enabled; ...)
+# ● astracamillagui.service - AstraCamillaGui - CamillaDSP Graphical Equalizer Interface
+#    Loaded: loaded (/etc/systemd/system/astracamillagui.service; enabled; ...)
 #    Active: active (running) since ...
 #    Main PID: ...
 #    Tasks: ...
 #    Memory: ...
-#    CGroup: /system.slice/camillaeq.service
+#    CGroup: /system.slice/astracamillagui.service
 #            └─... /usr/bin/node server/dist/index.js
 
 # Check logs
-sudo journalctl -u camillaeq -n 50
+sudo journalctl -u astracamillagui -n 50
 
 # Expected log lines:
 # Server listening on http://0.0.0.0:3000
@@ -173,16 +173,16 @@ curl http://192.168.1.100:3000/health
 
 ```bash
 # Start service
-sudo systemctl start camillaeq
+sudo systemctl start astracamillagui
 
 # Stop service
-sudo systemctl stop camillaeq
+sudo systemctl stop astracamillagui
 
 # Restart service
-sudo systemctl restart camillaeq
+sudo systemctl restart astracamillagui
 
 # Reload configuration (if supported)
-sudo systemctl reload camillaeq
+sudo systemctl reload astracamillagui
 ```
 
 ---
@@ -191,13 +191,13 @@ sudo systemctl reload camillaeq
 
 ```bash
 # Enable (start on boot)
-sudo systemctl enable camillaeq
+sudo systemctl enable astracamillagui
 
 # Disable (do not start on boot)
-sudo systemctl disable camillaeq
+sudo systemctl disable astracamillagui
 
 # Check enabled status
-systemctl is-enabled camillaeq
+systemctl is-enabled astracamillagui
 ```
 
 ---
@@ -206,13 +206,13 @@ systemctl is-enabled camillaeq
 
 ```bash
 # Full status
-sudo systemctl status camillaeq
+sudo systemctl status astracamillagui
 
 # One-line status
-systemctl is-active camillaeq
+systemctl is-active astracamillagui
 
 # Exit code-based check (for scripts)
-if systemctl is-active --quiet camillaeq; then
+if systemctl is-active --quiet astracamillagui; then
   echo "Service is running"
 fi
 ```
@@ -225,19 +225,19 @@ fi
 
 ```bash
 # Last 50 lines
-sudo journalctl -u camillaeq -n 50
+sudo journalctl -u astracamillagui -n 50
 
 # Follow logs (tail -f style)
-sudo journalctl -u camillaeq -f
+sudo journalctl -u astracamillagui -f
 
 # Logs since last boot
-sudo journalctl -u camillaeq -b
+sudo journalctl -u astracamillagui -b
 
 # Logs for specific time range
-sudo journalctl -u camillaeq --since "2024-01-15 10:00" --until "2024-01-15 11:00"
+sudo journalctl -u astracamillagui --since "2024-01-15 10:00" --until "2024-01-15 11:00"
 
 # Export logs to file
-sudo journalctl -u camillaeq > camillaeq.log
+sudo journalctl -u astracamillagui > astracamillagui.log
 ```
 
 ---
@@ -246,13 +246,13 @@ sudo journalctl -u camillaeq > camillaeq.log
 
 ```bash
 # Only errors
-sudo journalctl -u camillaeq -p err
+sudo journalctl -u astracamillagui -p err
 
 # Priority levels: emerg, alert, crit, err, warning, notice, info, debug
 
 # Grep for specific messages
-sudo journalctl -u camillaeq | grep "Server listening"
-sudo journalctl -u camillaeq | grep "ERROR"
+sudo journalctl -u astracamillagui | grep "Server listening"
+sudo journalctl -u astracamillagui | grep "ERROR"
 ```
 
 ---
@@ -283,10 +283,10 @@ sudo journalctl --vacuum-size=100M
 
 ```bash
 # 1. Stop service
-sudo systemctl stop camillaeq
+sudo systemctl stop astracamillagui
 
 # 2. Backup data
-sudo cp -r /opt/camillaeq/data /opt/camillaeq/data.backup.$(date +%Y%m%d)
+sudo cp -r /opt/astracamillagui/data /opt/astracamillagui/data.backup.$(date +%Y%m%d)
 
 # 3. Build new version (on dev machine or same host)
 cd /path/to/source
@@ -295,28 +295,28 @@ npm install
 npm run build
 
 # 4. Update application files
-sudo cp -r server/dist /opt/camillaeq/server
-sudo cp package.json /opt/camillaeq/
-sudo cp package-lock.json /opt/camillaeq/
+sudo cp -r server/dist /opt/astracamillagui/server
+sudo cp package.json /opt/astracamillagui/
+sudo cp package-lock.json /opt/astracamillagui/
 
 # 5. Update dependencies (if package.json changed)
-cd /opt/camillaeq
+cd /opt/astracamillagui
 sudo npm ci --omit=dev
 
 # 6. Update service file (if changed)
-sudo cp /path/to/source/deploy/systemd/camillaeq.service /etc/systemd/system/
+sudo cp /path/to/source/deploy/systemd/astracamillagui.service /etc/systemd/system/
 sudo systemctl daemon-reload
 
 # 7. Set ownership
-sudo chown -R camillaeq:camillaeq /opt/camillaeq/server
-sudo chown -R camillaeq:camillaeq /opt/camillaeq/node_modules
+sudo chown -R astracamillagui:astracamillagui /opt/astracamillagui/server
+sudo chown -R astracamillagui:astracamillagui /opt/astracamillagui/node_modules
 
 # 8. Start service
-sudo systemctl start camillaeq
+sudo systemctl start astracamillagui
 
 # 9. Verify
-sudo systemctl status camillaeq
-sudo journalctl -u camillaeq -n 20
+sudo systemctl status astracamillagui
+sudo journalctl -u astracamillagui -n 20
 ```
 
 ---
@@ -325,16 +325,16 @@ sudo journalctl -u camillaeq -n 20
 
 ```bash
 # Stop service
-sudo systemctl stop camillaeq
+sudo systemctl stop astracamillagui
 
 # Restore old application files
-sudo cp -r /opt/camillaeq/server.backup /opt/camillaeq/server
+sudo cp -r /opt/astracamillagui/server.backup /opt/astracamillagui/server
 
 # Restore old dependencies (if needed)
-sudo cp -r /opt/camillaeq/node_modules.backup /opt/camillaeq/node_modules
+sudo cp -r /opt/astracamillagui/node_modules.backup /opt/astracamillagui/node_modules
 
 # Start service
-sudo systemctl start camillaeq
+sudo systemctl start astracamillagui
 ```
 
 **Best practice:** Test updates on non-production system first
@@ -345,7 +345,7 @@ sudo systemctl start camillaeq
 
 ### Environment Variables
 
-**File:** `/etc/camillaeq/camillaeq.env`
+**File:** `/etc/astracamillagui/astracamillagui.env`
 
 **Common variables:**
 ```bash
@@ -357,7 +357,7 @@ SERVER_PORT=3000
 SERVER_HOST=0.0.0.0  # Or 127.0.0.1 for localhost only
 
 # Data storage
-CONFIG_DIR=./data  # Relative to WorkingDirectory (/opt/camillaeq)
+CONFIG_DIR=./data  # Relative to WorkingDirectory (/opt/astracamillagui)
 
 # Logging
 LOG_LEVEL=info  # debug, info, warn, error
@@ -375,7 +375,7 @@ SERVER_READ_ONLY=false
 
 **After changing:**
 ```bash
-sudo systemctl restart camillaeq
+sudo systemctl restart astracamillagui
 ```
 
 ---
@@ -386,7 +386,7 @@ sudo systemctl restart camillaeq
 
 1. **Enable read-only mode** to prevent unauthorized preset changes:
    ```bash
-   # In /etc/camillaeq/camillaeq.env
+   # In /etc/astracamillagui/astracamillagui.env
    SERVER_READ_ONLY=true
    ```
 
@@ -411,7 +411,7 @@ sudo systemctl restart camillaeq
 
 ### Service Hardening
 
-**Default security features** (in `camillaeq.service`):
+**Default security features** (in `astracamillagui.service`):
 
 ```ini
 # Prevent privilege escalation
@@ -426,8 +426,8 @@ ProtectSystem=strict
 # No access to /home
 ProtectHome=true
 
-# Only /opt/camillaeq/data is writable
-ReadWritePaths=/opt/camillaeq/data
+# Only /opt/astracamillagui/data is writable
+ReadWritePaths=/opt/astracamillagui/data
 ```
 
 **Additional hardening** (optional, add to service file):
@@ -452,7 +452,7 @@ MemoryMax=500M
 
 ### Automatic Restart
 
-**Default behavior** (in `camillaeq.service`):
+**Default behavior** (in `astracamillagui.service`):
 ```ini
 Restart=on-failure
 RestartSec=2
@@ -473,17 +473,17 @@ RestartSec=2
 
 ```bash
 # Check why service failed
-sudo systemctl status camillaeq
-sudo journalctl -u camillaeq -n 100
+sudo systemctl status astracamillagui
+sudo journalctl -u astracamillagui -n 100
 
 # Common issues:
 # - Port already in use
-# - Permissions on /opt/camillaeq/data
+# - Permissions on /opt/astracamillagui/data
 # - Missing node_modules
 # - Corrupt config file
 
 # Attempt restart
-sudo systemctl restart camillaeq
+sudo systemctl restart astracamillagui
 ```
 
 ---
@@ -515,7 +515,7 @@ WatchdogSec=30
 ### ufw (Ubuntu/Debian)
 
 ```bash
-# Allow CamillaEQ HTTP
+# Allow AstraCamillaGui HTTP
 sudo ufw allow 3000/tcp
 
 # Or restrict to LAN subnet
@@ -530,7 +530,7 @@ sudo ufw status numbered
 ### firewalld (RHEL/CentOS)
 
 ```bash
-# Allow CamillaEQ port
+# Allow AstraCamillaGui port
 sudo firewall-cmd --permanent --add-port=3000/tcp
 sudo firewall-cmd --reload
 
@@ -558,21 +558,21 @@ sudo iptables-save > /etc/iptables/rules.v4
 
 **Recommended setup:**
 - CamillaDSP on ports 1234 (control) + 1235 (spectrum)
-- CamillaEQ on port 3000
+- AstraCamillaGui on port 3000
 - Both as systemd services
 
 **Start order:**
 - CamillaDSP first (audio processing)
-- CamillaEQ second (UI)
+- AstraCamillaGui second (UI)
 
-**systemd dependency** (optional, add to `camillaeq.service`):
+**systemd dependency** (optional, add to `astracamillagui.service`):
 ```ini
 [Unit]
 After=camilladsp.service
 Wants=camilladsp.service
 ```
 
-**Effect:** CamillaEQ waits for CamillaDSP to start
+**Effect:** AstraCamillaGui waits for CamillaDSP to start
 
 ---
 
@@ -582,14 +582,14 @@ Wants=camilladsp.service
 
 **Check logs:**
 ```bash
-sudo journalctl -u camillaeq -n 50 --no-pager
+sudo journalctl -u astracamillagui -n 50 --no-pager
 ```
 
 **Common causes:**
 - Port 3000 already in use → Change `SERVER_PORT`
 - Missing node_modules → Run `npm ci --omit=dev`
-- Wrong WorkingDirectory → Check `/opt/camillaeq` exists
-- Permissions → Check `camillaeq` user owns `/opt/camillaeq`
+- Wrong WorkingDirectory → Check `/opt/astracamillagui` exists
+- Permissions → Check `astracamillagui` user owns `/opt/astracamillagui`
 
 ---
 
@@ -597,14 +597,14 @@ sudo journalctl -u camillaeq -n 50 --no-pager
 
 **Check restart count:**
 ```bash
-sudo systemctl status camillaeq
+sudo systemctl status astracamillagui
 # Look for "Start request repeated too quickly"
 ```
 
 **If hitting restart limit:**
 ```bash
 # Reset failure count
-sudo systemctl reset-failed camillaeq
+sudo systemctl reset-failed astracamillagui
 
 # Increase restart limits (in service file)
 [Service]
@@ -618,14 +618,14 @@ StartLimitIntervalSec=60
 
 **Check actual usage:**
 ```bash
-systemctl status camillaeq  # Shows current memory
-sudo ps aux | grep camillaeq
+systemctl status astracamillagui  # Shows current memory
+sudo ps aux | grep astracamillagui
 ```
 
 **Set memory limit:**
 ```bash
 # Edit service file
-sudo systemctl edit camillaeq
+sudo systemctl edit astracamillagui
 ```
 
 Add:
@@ -637,7 +637,7 @@ MemoryHigh=400M
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl restart camillaeq
+sudo systemctl restart astracamillagui
 ```
 
 ---

@@ -18,7 +18,7 @@ export function buildApp(): FastifyInstance {
           }
         : undefined,
       base: {
-        service: 'camillaeq-server',
+        service: 'astracamillagui-server',
       },
     },
     disableRequestLogging: true,

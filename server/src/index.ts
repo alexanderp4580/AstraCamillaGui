@@ -18,7 +18,7 @@ import { registerSettingsRoutes } from './routes/settings.js';
 import { registerDspConfigFileRoutes } from './routes/dspConfigFile.js';
 
 // Load .env files in development only
-// Production uses systemd EnvironmentFile (e.g., /etc/camillaeq/camillaeq.env)
+// Production uses systemd EnvironmentFile (e.g., /etc/astracamillagui/astracamillagui.env)
 if (process.env.NODE_ENV !== 'production') {
   // Try server/.env first (workspace-local)
   const serverEnv = resolve(process.cwd(), '.env');

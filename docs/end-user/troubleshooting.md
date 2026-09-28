@@ -1,6 +1,6 @@
 # Troubleshooting
 
-**Intended audience:** End users encountering problems with CamillaEQ.
+**Intended audience:** End users encountering problems with AstraCamillaGui.
 
 **This document does not cover:** Developer debugging or system administration issues.
 
@@ -142,7 +142,7 @@
 
 ### No Sound After Connecting
 
-**Important:** CamillaEQ does **not** process audio. CamillaDSP handles all audio routing.
+**Important:** AstraCamillaGui does **not** process audio. CamillaDSP handles all audio routing.
 
 **Checks:**
 
@@ -174,7 +174,7 @@
 - Refer to CamillaDSP documentation
 
 **CamillaDSP not processing audio:**
-- This is a CamillaDSP issue, not CamillaEQ
+- This is a CamillaDSP issue, not AstraCamillaGui
 - Check CamillaDSP logs and configuration
 
 ---
@@ -229,7 +229,7 @@
 **Spectrum WebSocket returns invalid data:**
 
 1. **Array has <3 values:**
-   - CamillaEQ requires ≥3 numeric values
+   - AstraCamillaGui requires ≥3 numeric values
    - Stereo-only responses (2 values) are rejected
 
 2. **Spectrum config not loaded:**
@@ -245,7 +245,7 @@
 1. Generate config: `node tools/build-camillaDSP-spectrum-yml.js --bins 256`
 2. Edit `devices:` section to match your audio setup
 3. Load on spectrum port: `camilladsp -p 1235 spectrum-256.yml`
-4. Reconnect CamillaEQ
+4. Reconnect AstraCamillaGui
 
 **Verify spectrum response:**
 - Use browser DevTools (F12) → Network tab → WS filter
@@ -286,7 +286,7 @@
 - Check CamillaDSP logs for crash cause
 
 **Network interruption:**
-- Disconnect and reconnect in CamillaEQ
+- Disconnect and reconnect in AstraCamillaGui
 - Or enable auto-reconnect and reload page
 
 ---
@@ -402,9 +402,9 @@ If the UI still shows all bands dimmed after the above:
 **Solutions:**
 
 **If you're the administrator:**
-- Edit server configuration: `/etc/camillaeq/camillaeq.env`
+- Edit server configuration: `/etc/astracamillagui/astracamillagui.env`
 - Set `SERVER_READ_ONLY=false`
-- Restart service: `sudo systemctl restart camillaeq`
+- Restart service: `sudo systemctl restart astracamillagui`
 - See [Linux Services](../power-user/linux-services.md) for details
 
 **If you're not the administrator:**
@@ -525,7 +525,7 @@ If the UI still shows all bands dimmed after the above:
    Check terminal output
    
    # Production (systemd)
-   sudo journalctl -u camillaeq -n 100
+   sudo journalctl -u astracamillagui -n 100
    ```
 
 2. **Disk space:**
@@ -646,7 +646,7 @@ For bug reports or support requests, export diagnostics:
 
 ### Report Issues
 
-GitHub repository: https://github.com/AlfredJKwack/camillaEQ
+GitHub repository: https://github.com/alexanderp4580/AstraCamillaGui
 
 When reporting issues, include:
 - **Diagnostics export** (from Copy Diagnostics button)
@@ -659,6 +659,6 @@ When reporting issues, include:
 
 ## Next Steps
 
-- [Overview](overview.md) - Understand CamillaEQ architecture
+- [Overview](overview.md) - Understand AstraCamillaGui architecture
 - [Quick Start](quick-start.md) - Installation and first connection
 - [Spectrum Analyzer](spectrum-analyzer.md) - Set up spectrum overlay

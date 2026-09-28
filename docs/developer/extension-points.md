@@ -1,6 +1,6 @@
 # Extension Points
 
-**Intended audience:** OSS developers extending or modifying CamillaEQ.
+**Intended audience:** OSS developers extending or modifying AstraCamillaGui.
 
 **This document does not cover:** Bug fixes or minor improvements.
 

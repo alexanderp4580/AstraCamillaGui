@@ -1,6 +1,6 @@
 # Architecture
 
-**Intended audience:** OSS developers contributing to or extending CamillaEQ.
+**Intended audience:** OSS developers contributing to or extending AstraCamillaGui.
 
 **This document does not cover:** End-user setup, deployment, or system administration.
 
@@ -8,7 +8,7 @@
 
 ## High-Level Responsibilities
 
-### CamillaEQ Server (Node.js/Fastify)
+### AstraCamillaGui Server (Node.js/Fastify)
 **Does:**
 - Serves the web UI (static files in production)
 - Persists EQ presets to disk (`/api/configs/*`)
@@ -31,7 +31,7 @@
 
 ---
 
-### CamillaEQ Client (Svelte/TypeScript)
+### AstraCamillaGui Client (Svelte/TypeScript)
 **Does:**
 - Connects directly to CamillaDSP via two WebSocket connections
 - Renders EQ controls, spectrum overlay, pipeline editor

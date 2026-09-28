@@ -6,9 +6,9 @@
 
 ---
 
-## What CamillaEQ Does
+## What AstraCamillaGui Does
 
-CamillaEQ is a **web-based graphical equalizer interface** for CamillaDSP. It provides:
+AstraCamillaGui is a **web-based graphical equalizer interface** for CamillaDSP. It provides:
 
 1. **Interactive EQ editing** with visual feedback (frequency response curves)
 2. **Real-time spectrum analyzer overlay** showing audio signal levels
@@ -17,9 +17,9 @@ CamillaEQ is a **web-based graphical equalizer interface** for CamillaDSP. It pr
 
 ---
 
-## What CamillaEQ Does NOT Do
+## What AstraCamillaGui Does NOT Do
 
-- **Audio processing:** CamillaEQ does not process audio. CamillaDSP does all DSP.
+- **Audio processing:** AstraCamillaGui does not process audio. CamillaDSP does all DSP.
 - **Audio routing:** CamillaDSP handles all audio input/output.
 - **FFT analysis:** The spectrum display shows filterbank outputs from CamillaDSP, not a traditional FFT.
 
@@ -34,7 +34,7 @@ The audio processing engine. Must be running and accessible via WebSocket.
 - **Control port:** Commands (config upload, volume, state queries)
 - **Spectrum port:** Spectrum data for the analyzer overlay
 
-### CamillaEQ Server (This Application)
+### AstraCamillaGui Server (This Application)
 A Node.js web server that:
 - Serves the web interface
 - Persists EQ settings and presets to disk
@@ -71,12 +71,12 @@ Control WebSocket is closed. EQ editing is disabled until reconnected.
 ```
 ┌─────────────────────┐
 │   Your Browser      │
-│  (CamillaEQ UI)     │
+│  (AstraCamillaGui UI)     │
 └──────┬──────────────┘
        │
        ├─── WebSocket ──→ CamillaDSP Control Port (commands)
        ├─── WebSocket ──→ CamillaDSP Spectrum Port (data)
-       └─── HTTP ───────→ CamillaEQ Server (save presets)
+       └─── HTTP ───────→ AstraCamillaGui Server (save presets)
 ```
 
 **Data flow:**
@@ -94,6 +94,6 @@ Control WebSocket is closed. EQ editing is disabled until reconnected.
 
 ## Next Steps
 
-- [Quick Start](quick-start.md) - Install and connect CamillaEQ
+- [Quick Start](quick-start.md) - Install and connect AstraCamillaGui
 - [Spectrum Analyzer](spectrum-analyzer.md) - Set up and understand the spectrum display
 - [Troubleshooting](troubleshooting.md) - Fix common issues

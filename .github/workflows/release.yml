@@ -52,7 +52,7 @@ jobs:
     
     - name: Assemble release artifact
       run: |
-        RELEASE_NAME="camillaeq-${{ steps.version.outputs.VERSION }}"
+        RELEASE_NAME="astracamillagui-${{ steps.version.outputs.VERSION }}"
         RELEASE_DIR="release/${RELEASE_NAME}"
         
         echo "Assembling release: ${RELEASE_NAME}"
@@ -88,13 +88,13 @@ jobs:
     
     - name: Generate runtime package.json
       run: |
-        RELEASE_NAME="camillaeq-${{ steps.version.outputs.VERSION }}"
+        RELEASE_NAME="astracamillagui-${{ steps.version.outputs.VERSION }}"
         RELEASE_DIR="release/${RELEASE_NAME}"
         
         # Extract runtime dependencies from server/package.json
         cat > "${RELEASE_DIR}/package.json" << 'EOF'
         {
-          "name": "camillaeq",
+          "name": "astracamillagui",
           "version": "${{ steps.version.outputs.VERSION }}",
           "description": "CamillaDSP graphical equalizer interface",
           "type": "module",
@@ -124,7 +124,7 @@ jobs:
     
     - name: Generate package-lock.json and install dependencies
       run: |
-        RELEASE_NAME="camillaeq-${{ steps.version.outputs.VERSION }}"
+        RELEASE_NAME="astracamillagui-${{ steps.version.outputs.VERSION }}"
         RELEASE_DIR="release/${RELEASE_NAME}"
         
         cd "${RELEASE_DIR}"
@@ -140,7 +140,7 @@ jobs:
     
     - name: Smoke test the artifact
       run: |
-        RELEASE_NAME="camillaeq-${{ steps.version.outputs.VERSION }}"
+        RELEASE_NAME="astracamillagui-${{ steps.version.outputs.VERSION }}"
         RELEASE_DIR="release/${RELEASE_NAME}"
         
         cd "${RELEASE_DIR}"
@@ -243,20 +243,20 @@ jobs:
         TAG="${{ steps.version.outputs.TAG }}"
         
         cd release
-        tar -czf "camillaeq-${TAG}.tar.gz" "camillaeq-${{ steps.version.outputs.VERSION }}/"
+        tar -czf "astracamillagui-${TAG}.tar.gz" "astracamillagui-${{ steps.version.outputs.VERSION }}/"
         
         echo "✓ Created release tarball"
-        ls -lh "camillaeq-${TAG}.tar.gz"
+        ls -lh "astracamillagui-${TAG}.tar.gz"
         
         # Move to root for upload
-        mv "camillaeq-${TAG}.tar.gz" ../
+        mv "astracamillagui-${TAG}.tar.gz" ../
     
     - name: Upload tarball to release
       run: |
         TAG="${{ steps.version.outputs.TAG }}"
         
-        echo "Uploading camillaeq-${TAG}.tar.gz to release ${TAG}"
-        gh release upload "${TAG}" "camillaeq-${TAG}.tar.gz" --clobber
+        echo "Uploading astracamillagui-${TAG}.tar.gz to release ${TAG}"
+        gh release upload "${TAG}" "astracamillagui-${TAG}.tar.gz" --clobber
         
         echo "✓ Tarball uploaded successfully"
       env:
