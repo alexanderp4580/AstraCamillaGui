@@ -112,6 +112,28 @@ export async function putLatestState(config: CamillaDSPConfig): Promise<void> {
 }
 
 /**
+ * Write CamillaDSP's running config (as YAML) to the file it loads on startup
+ */
+export async function putDspConfigFile(yaml: string): Promise<void> {
+  const response = await fetch('/api/dsp-config-file', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ yaml }),
+  });
+
+  if (!response.ok) {
+    let message = `${response.status} ${response.statusText}`;
+    try {
+      const body = await response.json();
+      message = body?.error?.message || message;
+    } catch {
+      // Keep the status line
+    }
+    throw new ApiError(response.status, message);
+  }
+}
+
+/**
  * Get server version info
  */
 export async function getVersion(): Promise<VersionInfo> {

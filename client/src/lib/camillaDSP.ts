@@ -116,6 +116,9 @@ export class CamillaDSP {
   public connected: boolean = false;
   public config: GuiReadyCamillaDSPConfig | null = null;
 
+  // CamillaDSP's own message for the last rejected upload, e.g. a validation error.
+  public lastUploadError: string | null = null;
+
   /**
    * Check if control socket is open and ready
    */
@@ -588,6 +591,7 @@ export class CamillaDSP {
 
     if (!this.validateConfig()) {
       console.error('Invalid configuration');
+      this.lastUploadError = 'Invalid configuration';
       return false;
     }
 
@@ -596,13 +600,16 @@ export class CamillaDSP {
       await this.sendDSPMessage({
         SetConfigJson: JSON.stringify(this.config),
       });
-      
+
       // Re-download to confirm what CamillaDSP accepted
       await this.downloadConfig();
-      
+
+      this.lastUploadError = null;
       return true;
     } catch (error) {
       console.error('Error uploading config:', error);
+      const message = error instanceof Error ? error.message : String(error);
+      this.lastUploadError = message.replace(/^DSP command failed: SetConfigJson - /, '');
       return false;
     }
   }

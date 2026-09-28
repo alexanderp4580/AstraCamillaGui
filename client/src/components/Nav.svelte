@@ -11,6 +11,7 @@
     { route: '/eq', label: 'Parametric EQ', icon: '🎚️' },
     { route: '/pipeline', label: 'Pipeline Editor', icon: '🔗' },
     { route: '/energy', label: 'Energy Meter', icon: '📊' },
+    { route: '/night', label: 'Night Mode', icon: '🌙' },
   ];
 
   let currentRoute: Route;

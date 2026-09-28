@@ -14,8 +14,16 @@ For how the EQ, pipeline and preset pages work, see the upstream
   instance (a bandpass filter bank on its own port). No spectrum port and no
   spectrum config are needed.
 - **Energy page.** Live RMS and peak meters for each channel, with peak hold.
-- **Night mode editor.** Adds an editor for AstraCamillaDsp's `NightMode` processor
-  on the pipeline page.
+- **Night mode page.** A page of its own for AstraCamillaDsp's `NightMode` processor:
+  on/off, sliders limited to the ranges the DSP accepts, reset to defaults, and adding
+  it to the pipeline if it is missing. Also editable on the pipeline page.
+- **Save.** Changes apply live but are lost when CamillaDSP restarts. The Save button
+  writes the running config to the file CamillaDSP loads on startup, set with
+  `DSP_CONFIG_FILE` (on moOde: `/usr/share/camilladsp/configs/custom`).
+- **Rejected changes are shown.** When CamillaDSP refuses a change, its error appears
+  at the top of the page and the controls return to what is actually running.
+- **Preamp fits downmixing pipelines.** The preamp mixer goes after the last mixer,
+  sized to the channel count there, instead of at the start of the pipeline.
 - **Slider controls.** Sliders replace knobs in the EQ band and pipeline block editors.
 - **DSP host defaults to the host that served the page.** Opening the UI from a
   phone connects to the Pi without typing an address.

@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   import type { ProcessorBlockVm } from '../../lib/pipelineViewModel';
   import HSlider from '../HSlider.svelte';
+  import { NIGHT_MODE_PARAMS } from '../../lib/nightModeParams';
 
   export let block: ProcessorBlockVm;
   export let expanded: boolean = false;
@@ -93,16 +94,14 @@
         { key: 'release', label: 'Release', value: Number(params.release ?? 0.1), unit: 's', min: 0, max: 2.0 },
       ];
     } else if (type === 'NightMode') {
-      return [
-        { key: 'amount', label: 'Amount', value: Number(params.amount ?? 100), unit: '', min: 0, max: 100 },
-        { key: 'max_attenuation', label: 'Max Attenuation', value: Number(params.max_attenuation ?? 28), unit: 'dB', min: 0, max: 60 },
-        { key: 'bass_reduction', label: 'Bass Reduction', value: Number(params.bass_reduction ?? 10), unit: 'dB', min: 0, max: 24 },
-        { key: 'headroom', label: 'Headroom', value: Number(params.headroom ?? 0), unit: 'dB', min: 0, max: 24 },
-        { key: 'ratio', label: 'Ratio', value: Number(params.ratio ?? 12), unit: ':1', min: 1, max: 20 },
-        { key: 'transient_softening', label: 'Transient Softening', value: Number(params.transient_softening ?? 100), unit: '', min: 0, max: 100 },
-        { key: 'dialogue_protection', label: 'Dialogue Protection', value: Number(params.dialogue_protection ?? 60), unit: '', min: 0, max: 100 },
-        { key: 'presence_gain', label: 'Presence Gain', value: Number(params.presence_gain ?? 0), unit: 'dB', min: -12, max: 12 },
-      ];
+      return NIGHT_MODE_PARAMS.map((spec) => ({
+        key: spec.key,
+        label: spec.label,
+        value: Number(params[spec.key] ?? spec.defaultValue),
+        unit: spec.unit,
+        min: spec.min,
+        max: spec.max,
+      }));
     }
 
     return [];

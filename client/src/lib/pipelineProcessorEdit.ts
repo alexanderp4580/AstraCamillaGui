@@ -4,6 +4,7 @@
  */
 
 import type { GuiReadyCamillaDSPConfig } from './camillaDSP';
+import { getNightModeParamSpec, type NightModeParamKey } from './nightModeParams';
 
 /**
  * Set processor pipeline step bypass state
@@ -129,16 +130,7 @@ export function setNoiseGateParam(
 export function setNightModeParam(
   config: GuiReadyCamillaDSPConfig,
   processorName: string,
-  param:
-    | 'amount'
-    | 'max_attenuation'
-    | 'bass_reduction'
-    | 'headroom'
-    | 'ratio'
-    | 'transient_softening'
-    | 'dialogue_protection'
-    | 'presence_gain'
-    | 'channels',
+  param: NightModeParamKey | 'channels',
   value: number
 ): GuiReadyCamillaDSPConfig {
   const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
@@ -152,31 +144,13 @@ export function setNightModeParam(
     throw new Error(`Processor "${processorName}" is not a NightMode`);
   }
 
-  // Apply the same min/max bounds shown in the editor UI, rounded to 2 decimals
-  let clampedValue = value;
-
-  switch (param) {
-    case 'amount':
-    case 'transient_softening':
-    case 'dialogue_protection':
-      clampedValue = Math.round(Math.min(100, Math.max(0, value)) * 100) / 100;
-      break;
-    case 'max_attenuation':
-      clampedValue = Math.round(Math.min(60, Math.max(0, value)) * 100) / 100;
-      break;
-    case 'bass_reduction':
-    case 'headroom':
-      clampedValue = Math.round(Math.min(24, Math.max(0, value)) * 100) / 100;
-      break;
-    case 'ratio':
-      clampedValue = Math.round(Math.min(20, Math.max(1, value)) * 100) / 100;
-      break;
-    case 'presence_gain':
-      clampedValue = Math.round(Math.min(12, Math.max(-12, value)) * 100) / 100;
-      break;
-    case 'channels':
-      clampedValue = Math.max(1, Math.floor(value));
-      break;
+  // Clamp to the range the DSP accepts, rounded to 2 decimals
+  let clampedValue: number;
+  const spec = getNightModeParamSpec(param);
+  if (spec) {
+    clampedValue = Math.round(Math.min(spec.max, Math.max(spec.min, value)) * 100) / 100;
+  } else {
+    clampedValue = Math.max(1, Math.floor(value));
   }
 
   processor.parameters[param] = clampedValue;

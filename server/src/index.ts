@@ -15,6 +15,7 @@ import { registerConfigRoutes } from './routes/config.js';
 import { registerStateRoutes } from './routes/state.js';
 import { registerConfigsRoutes } from './routes/configs.js';
 import { registerSettingsRoutes } from './routes/settings.js';
+import { registerDspConfigFileRoutes } from './routes/dspConfigFile.js';
 
 // Load .env files in development only
 // Production uses systemd EnvironmentFile (e.g., /etc/camillaeq/camillaeq.env)
@@ -50,7 +51,8 @@ const start = async () => {
     registerConfigRoutes(app);
     registerStateRoutes(app);
     registerConfigsRoutes(app);
-    
+    registerDspConfigFileRoutes(app);
+
     // Catch-all for unmatched /api/* routes to prevent static file shadowing
     // This ensures /api/* always returns JSON, never static files
     app.route({

@@ -82,6 +82,10 @@ export const dspDevices = derived(dspState, ($state) => $state.availableDevices)
 export const dspConfigs = derived(dspState, ($state) => $state.currentConfigs);
 export const dspFailures = derived(dspState, ($state) => $state.failures);
 
+// True once a change has been applied to CamillaDSP but not yet saved to its config
+// file, i.e. a restart would lose it.
+export const unsavedChanges = writable<boolean>(false);
+
 /**
  * Get the singleton DSP instance
  */

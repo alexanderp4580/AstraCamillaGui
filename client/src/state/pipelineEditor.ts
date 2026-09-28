@@ -4,8 +4,9 @@
  * Uses EQ-style debounced upload pattern
  */
 
+import { writable } from 'svelte/store';
 import type { GuiReadyCamillaDSPConfig } from '../lib/camillaDSP';
-import { getDspInstance, updateConfig as updateDspConfig } from './dspStore';
+import { getDspInstance, updateConfig as updateDspConfig, unsavedChanges } from './dspStore';
 import { initializeFromConfig } from './eqStore';
 import { putLatestState } from '../lib/api';
 import { debounceCancelable } from '../lib/debounce';
@@ -19,6 +20,9 @@ export interface PipelineUploadStatus {
   state: PipelineUploadState;
   message?: string;
 }
+
+// Latest upload status, for any page that edits the pipeline
+export const pipelineUploadStatus = writable<PipelineUploadStatus>({ state: 'idle' });
 
 // Status callback (for UI to subscribe)
 let statusCallback: ((status: PipelineUploadStatus) => void) | null = null;
@@ -36,8 +40,26 @@ export function setPipelineUploadStatusCallback(
  * Notify status change
  */
 function notifyStatus(status: PipelineUploadStatus): void {
+  pipelineUploadStatus.set(status);
   if (statusCallback) {
     statusCallback(status);
+  }
+}
+
+/**
+ * After a rejected upload, show what CamillaDSP is actually running instead of the
+ * optimistic edit it refused.
+ */
+async function resyncAfterFailure(): Promise<void> {
+  const dspInstance = getDspInstance();
+  if (!dspInstance) return;
+  try {
+    if (await dspInstance.downloadConfig() && dspInstance.config) {
+      updateDspConfig(dspInstance.config);
+      initializeFromConfig(dspInstance.config);
+    }
+  } catch (error) {
+    console.warn('Could not resync after upload failure:', error);
   }
 }
 
@@ -60,6 +82,7 @@ const debouncedUpload = debounceCancelable(async (config: GuiReadyCamillaDSPConf
     // Validate
     if (!dspInstance.validateConfig()) {
       notifyStatus({ state: 'error', message: 'Invalid configuration' });
+      await resyncAfterFailure();
       return;
     }
 
@@ -72,6 +95,7 @@ const debouncedUpload = debounceCancelable(async (config: GuiReadyCamillaDSPConf
 
       // Sync global dspStore
       updateDspConfig(confirmedConfig);
+      unsavedChanges.set(true);
 
       // Persist to backend (write-through)
       try {
@@ -95,7 +119,8 @@ const debouncedUpload = debounceCancelable(async (config: GuiReadyCamillaDSPConf
         notifyStatus({ state: 'idle' });
       }, 2000);
     } else {
-      notifyStatus({ state: 'error', message: 'Upload failed' });
+      notifyStatus({ state: 'error', message: dspInstance.lastUploadError || 'Upload failed' });
+      await resyncAfterFailure();
     }
   } catch (error) {
     console.error('Error uploading pipeline config:', error);

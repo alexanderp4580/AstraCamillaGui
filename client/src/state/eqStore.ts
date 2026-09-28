@@ -14,7 +14,7 @@ import {
   type ExtractedEqData,
 } from '../lib/camillaEqMapping';
 import { debounceCancelable } from '../lib/debounce';
-import { getDspInstance, updateConfig as updateDspConfig } from './dspStore';
+import { getDspInstance, updateConfig as updateDspConfig, unsavedChanges } from './dspStore';
 import { putLatestState } from '../lib/api';
 import { clampFreqHz, clampGainDb, clampQ } from '../lib/eqParamClamp';
 import { disableFilterEverywhere, enableFilterEverywhere } from '../lib/filterEnablement';
@@ -77,6 +77,7 @@ const debouncedUpload = debounceCancelable(async () => {
       // Store confirmed config as new baseline
       lastConfig = confirmedConfig;
       updateDspConfig(confirmedConfig); // Sync global dspStore
+      unsavedChanges.set(true);
       
       if (soloSessionActive) {
         // During a solo session the pipeline is temporarily patched (only the
@@ -114,7 +115,7 @@ const debouncedUpload = debounceCancelable(async () => {
       }, 2000);
     } else {
       // Upload failed - attempt best-effort resync
-      uploadStatus.set({ state: 'error', message: 'Upload failed' });
+      uploadStatus.set({ state: 'error', message: dspInstance.lastUploadError || 'Upload failed' });
       
       try {
         // Try to resync with DSP's current config

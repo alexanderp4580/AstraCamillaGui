@@ -9,6 +9,8 @@
   import PresetsPage from './pages/PresetsPage.svelte';
   import PipelinePage from './pages/PipelinePage.svelte';
   import EnergyPage from './pages/EnergyPage.svelte';
+  import NightModePage from './pages/NightModePage.svelte';
+  import SaveBar from './components/SaveBar.svelte';
   import './styles/theme.css';
 
   let currentRoute: string;
@@ -24,6 +26,7 @@
 <div class="app-shell">
   <Nav />
   <main class="main-content">
+    <SaveBar />
     {#if currentRoute === '/connect'}
       <ConnectPage />
     {:else if currentRoute === '/eq'}
@@ -34,6 +37,8 @@
       <PipelinePage />
     {:else if currentRoute === '/energy'}
       <EnergyPage />
+    {:else if currentRoute === '/night'}
+      <NightModePage />
     {/if}
   </main>
 </div>

@@ -7,6 +7,7 @@ import type { EqBand } from '../dsp/filterResponse';
 import type { CamillaDSPConfig, Filter } from './camillaDSP';
 import { normalizePipelineStep, isGainCapable, type PipelineStepNormalized } from './camillaTypes';
 import { isFilterDisabled, getStepKey, getDisabledFiltersForStep } from './disabledFiltersOverlay';
+import { channelsAtPipelineIndex, indexAfterLastMixer } from './pipelineChannels';
 
 export interface ExtractedEqData {
   bands: EqBand[];
@@ -226,44 +227,42 @@ export function applyEqBandsToConfig(
   const updatedConfig = JSON.parse(JSON.stringify(config)) as CamillaDSPConfig;
 
   // Update/create preamp mixer if gain != 0
-  if (preampGain !== 0) {
-    if (!updatedConfig.mixers) {
-      updatedConfig.mixers = {};
+  const existingPreamp = updatedConfig.mixers?.preamp;
+  if (existingPreamp) {
+    for (const dest of existingPreamp.mapping) {
+      if (dest.sources[0]) dest.sources[0].gain = preampGain;
     }
-    
-    updatedConfig.mixers.preamp = {
-      channels: { in: 2, out: 2 },
-      mapping: [
-        {
-          dest: 0,
-          sources: [{ channel: 0, gain: preampGain, inverted: false, mute: false, scale: 'dB' }],
-          mute: false,
-        },
-        {
-          dest: 1,
-          sources: [{ channel: 1, gain: preampGain, inverted: false, mute: false, scale: 'dB' }],
-          mute: false,
-        },
-      ],
-    };
-    
-    // Ensure preamp is in pipeline at start
+  }
+
+  if (preampGain !== 0) {
     const normalizedPipeline = (updatedConfig.pipeline || []).map(normalizePipelineStep);
     const hasPreampStep = normalizedPipeline.some(
       (step) => step && step.type === 'Mixer' && step.name === 'preamp'
     );
-    
-    if (!hasPreampStep) {
-      updatedConfig.pipeline = [
-        { type: 'Mixer', name: 'preamp' },
-        ...(updatedConfig.pipeline || []),
-      ];
-    }
-  } else {
-    // Preamp gain is 0: set gain to 0 but keep structure (simplest approach)
-    if (updatedConfig.mixers && updatedConfig.mixers.preamp) {
-      updatedConfig.mixers.preamp.mapping[0].sources[0].gain = 0;
-      updatedConfig.mixers.preamp.mapping[1].sources[0].gain = 0;
+
+    if (!existingPreamp || !hasPreampStep) {
+      // Placed after any downmix mixer and sized to the channel count there, so it
+      // also fits pipelines that capture more channels than they play back.
+      const insertIndex = indexAfterLastMixer(updatedConfig);
+      const channelCount = channelsAtPipelineIndex(updatedConfig, insertIndex);
+
+      if (!updatedConfig.mixers) {
+        updatedConfig.mixers = {};
+      }
+      updatedConfig.mixers.preamp = {
+        channels: { in: channelCount, out: channelCount },
+        mapping: Array.from({ length: channelCount }, (_, ch) => ({
+          dest: ch,
+          sources: [{ channel: ch, gain: preampGain, inverted: false, mute: false, scale: 'dB' as const }],
+          mute: false,
+        })),
+      };
+
+      if (!hasPreampStep) {
+        const pipeline = [...(updatedConfig.pipeline || [])];
+        pipeline.splice(insertIndex, 0, { type: 'Mixer', name: 'preamp' });
+        updatedConfig.pipeline = pipeline;
+      }
     }
   }
 
