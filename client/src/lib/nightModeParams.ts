@@ -150,3 +150,18 @@ export const NIGHT_MODE_PARAMS: NightModeParamSpec[] = [
 export function getNightModeParamSpec(key: string): NightModeParamSpec | undefined {
   return NIGHT_MODE_PARAMS.find((p) => p.key === key);
 }
+
+/**
+ * The dialogue reference normally adapts toward whatever the detector judges as
+ * dialogue, which is what lets one setup work across a quiet drama and a loud
+ * blockbuster. That adapting is also what caps how much reduction ever happens: on
+ * louder content the reference chases upward and narrows the gap to the threshold,
+ * so no amount of ratio/max_attenuation buys much more (measured: 11.8 dB -> 14.3 dB
+ * reduction on a trailer's loudest 10s going from defaults to every other knob maxed).
+ * Pinning the reference removes that ceiling — same test, pinned at -38 dBFS, gave
+ * 31 dB. The trade-off: a pin doesn't adapt to this content's actual dialogue level,
+ * so it can compress quiet dialogue too, not just the loud parts.
+ */
+export const REFERENCE_LEVEL_MIN = -45;
+export const REFERENCE_LEVEL_MAX = -12;
+export const REFERENCE_LEVEL_DEFAULT_PIN = -33;

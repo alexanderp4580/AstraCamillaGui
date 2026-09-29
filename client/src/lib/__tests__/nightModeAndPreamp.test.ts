@@ -3,7 +3,7 @@ import type { GuiReadyCamillaDSPConfig } from '../camillaDSP';
 import { applyEqBandsToConfig, extractEqBandsFromConfig } from '../camillaEqMapping';
 import { addNightMode, findNightMode } from '../nightModeEdit';
 import { channelsAtPipelineIndex } from '../pipelineChannels';
-import { setNightModeParam } from '../pipelineProcessorEdit';
+import { setNightModeParam, setNightModeReferenceLevel } from '../pipelineProcessorEdit';
 
 // Mirrors the moOde box: 4 captured channels (mixbus + line-in) folded to 2.
 function fourToTwoConfig(): GuiReadyCamillaDSPConfig {
@@ -98,5 +98,19 @@ describe('night mode', () => {
 
     const presenceLow = setNightModeParam(config, name, 'presence_gain', -12);
     expect(presenceLow.processors[name].parameters.presence_gain).toBe(0);
+  });
+
+  it('pins and unpins the reference, clamped to the DSP window', () => {
+    const config = addNightMode(fourToTwoConfig());
+    const name = findNightMode(config)!.name;
+
+    const pinned = setNightModeReferenceLevel(config, name, -60);
+    expect(pinned.processors[name].parameters.reference_level).toBe(-45);
+
+    const pinnedHigh = setNightModeReferenceLevel(config, name, 0);
+    expect(pinnedHigh.processors[name].parameters.reference_level).toBe(-12);
+
+    const unpinned = setNightModeReferenceLevel(pinned, name, null);
+    expect(unpinned.processors[name].parameters.reference_level).toBeNull();
   });
 });

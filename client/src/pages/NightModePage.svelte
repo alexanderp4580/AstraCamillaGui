@@ -1,9 +1,19 @@
 <script lang="ts">
   import { connectionState, dspConfig, updateConfig } from '../state/dspStore';
   import { commitPipelineConfigChange } from '../state/pipelineEditor';
-  import { setNightModeParam, setProcessorStepBypassed } from '../lib/pipelineProcessorEdit';
+  import {
+    setNightModeParam,
+    setNightModeReferenceLevel,
+    setProcessorStepBypassed,
+  } from '../lib/pipelineProcessorEdit';
   import { addNightMode, findNightMode } from '../lib/nightModeEdit';
-  import { NIGHT_MODE_PARAMS, type NightModeParamKey } from '../lib/nightModeParams';
+  import {
+    NIGHT_MODE_PARAMS,
+    REFERENCE_LEVEL_MIN,
+    REFERENCE_LEVEL_MAX,
+    REFERENCE_LEVEL_DEFAULT_PIN,
+    type NightModeParamKey,
+  } from '../lib/nightModeParams';
   import type { GuiReadyCamillaDSPConfig } from '../lib/camillaDSP';
   import HSlider from '../components/HSlider.svelte';
 
@@ -39,17 +49,35 @@
   function resetDefaults(): void {
     if (!nightMode) return;
     const name = nightMode.name;
-    apply((config) =>
-      NIGHT_MODE_PARAMS.reduce(
+    apply((config) => {
+      const withParams = NIGHT_MODE_PARAMS.reduce(
         (acc, spec) => setNightModeParam(acc, name, spec.key, spec.defaultValue),
         config
-      )
-    );
+      );
+      return setNightModeReferenceLevel(withParams, name, null);
+    });
   }
 
   function paramValue(key: NightModeParamKey, fallback: number): number {
     const raw = nightMode?.parameters[key];
     return raw === null || raw === undefined ? fallback : Number(raw);
+  }
+
+  // null = adaptive (the normal, dialogue-tracking behaviour)
+  $: referencePinned = nightMode ? (nightMode.parameters.reference_level ?? null) : null;
+
+  function togglePin(pinned: boolean): void {
+    if (!nightMode) return;
+    const name = nightMode.name;
+    apply((config) =>
+      setNightModeReferenceLevel(config, name, pinned ? REFERENCE_LEVEL_DEFAULT_PIN : null)
+    );
+  }
+
+  function setReferenceLevel(value: number): void {
+    if (!nightMode) return;
+    const name = nightMode.name;
+    apply((config) => setNightModeReferenceLevel(config, name, value));
   }
 
   // Precomputed so the each-block below reacts to nightMode changing: a per-item
@@ -120,6 +148,37 @@
       Defaults are deliberately strong. If night mode does too much, raise Headroom or
       lower Amount first.
     </p>
+
+    <div class="reference-section">
+      <label class="toggle">
+        <input
+          type="checkbox"
+          checked={referencePinned !== null}
+          on:change={(e) => togglePin(e.currentTarget.checked)}
+        />
+        <span>Pin reference{referencePinned !== null ? ` at ${referencePinned.toFixed(0)} dBFS` : ''}</span>
+      </label>
+      <p class="hint">
+        Normally the threshold tracks the dialogue level automatically, which is what
+        lets one setup work on both a quiet drama and a loud blockbuster — but on
+        louder content it also tracks upward, narrowing the gap it has to work with.
+        Pinning it to a fixed level removes that ceiling: measured on a film trailer,
+        pinning turned an 11–14 dB reduction on the loudest moments into 31 dB. The
+        trade-off is that a pin doesn't know this content's actual dialogue level, so
+        it can compress quiet dialogue too, not just the loud parts — start with it
+        near the bottom of the range and raise it if dialogue gets swallowed.
+      </p>
+      {#if referencePinned !== null}
+        <HSlider
+          label="Reference"
+          value={referencePinned}
+          min={REFERENCE_LEVEL_MIN}
+          max={REFERENCE_LEVEL_MAX}
+          formatValue={(v) => `${v.toFixed(0)} dBFS`}
+          on:change={(e) => setReferenceLevel(e.detail.value)}
+        />
+      {/if}
+    </div>
   {/if}
 
   {#if editError}
@@ -222,5 +281,15 @@
   .error {
     color: #ff9999;
     margin: 0;
+  }
+
+  .reference-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 1rem;
+    background: var(--ui-panel);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
   }
 </style>
