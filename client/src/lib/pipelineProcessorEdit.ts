@@ -6,6 +6,7 @@
 import type { GuiReadyCamillaDSPConfig } from './camillaDSP';
 import {
   getNightModeParamSpec,
+  NIGHT_MODE_PARAMS,
   REFERENCE_LEVEL_MIN,
   REFERENCE_LEVEL_MAX,
   REFERENCE_MIN_DEFAULT,
@@ -239,6 +240,7 @@ export function setNightModeReferenceMin(
   processorName: string,
   value: number
 ): GuiReadyCamillaDSPConfig {
+  if (!Number.isFinite(value)) return config;
   const { updated, parameters } = nightModeParameters(config, processorName);
   const min = clampBound(value);
   const max = Number(parameters.reference_max ?? REFERENCE_MAX_DEFAULT);
@@ -257,6 +259,7 @@ export function setNightModeReferenceMax(
   processorName: string,
   value: number
 ): GuiReadyCamillaDSPConfig {
+  if (!Number.isFinite(value)) return config;
   const { updated, parameters } = nightModeParameters(config, processorName);
   const max = clampBound(value);
   const min = Number(parameters.reference_min ?? REFERENCE_MIN_DEFAULT);
@@ -274,10 +277,38 @@ export function setNightModeReferenceSlew(
   processorName: string,
   value: number
 ): GuiReadyCamillaDSPConfig {
+  if (!Number.isFinite(value)) return config;
   const { updated, parameters } = nightModeParameters(config, processorName);
   const stepped = Math.round(value / REFERENCE_SLEW_STEP) * REFERENCE_SLEW_STEP;
   const slew =
     Math.round(Math.min(REFERENCE_SLEW_MAX, Math.max(REFERENCE_SLEW_MIN, stepped)) * 100) / 100;
   setOrOmit(parameters, 'reference_slew', slew, REFERENCE_SLEW_DEFAULT);
+  const min = Number(parameters.reference_min ?? REFERENCE_MIN_DEFAULT);
+  const max = Number(parameters.reference_max ?? REFERENCE_MAX_DEFAULT);
+  if (min > max) setOrOmit(parameters, 'reference_min', max, REFERENCE_MIN_DEFAULT);
   return updated;
+}
+
+/**
+ * Restore every night mode setting to its default: the main parameters, the
+ * adaptive reference (unpinned) and its min, max and follow speed.
+ */
+export function resetNightModeDefaults(
+  config: GuiReadyCamillaDSPConfig,
+  processorName: string
+): GuiReadyCamillaDSPConfig {
+  const withParams = NIGHT_MODE_PARAMS.reduce(
+    (acc, spec) => setNightModeParam(acc, processorName, spec.key, spec.defaultValue),
+    config
+  );
+  const unpinned = setNightModeReferenceLevel(withParams, processorName, null);
+  return setNightModeReferenceSlew(
+    setNightModeReferenceMax(
+      setNightModeReferenceMin(unpinned, processorName, REFERENCE_MIN_DEFAULT),
+      processorName,
+      REFERENCE_MAX_DEFAULT
+    ),
+    processorName,
+    REFERENCE_SLEW_DEFAULT
+  );
 }

@@ -202,8 +202,8 @@ export const REFERENCE_BOUND_PARAMS: ReferenceBoundSpec[] = [
     defaultValue: REFERENCE_MAX_DEFAULT,
     help: 'The highest level the adaptive reference may reach, however loud the dialogue gets.',
     effect:
-      'Lower: loud content cannot pull the reference up, so loud passages are reduced more. ' +
-      'Higher: the reference follows loud dialogue further.',
+      'The threshold is the reference plus headroom. Lower: the threshold stays lower, so ' +
+      'louder passages are reduced more. Higher: the reference follows louder dialogue further.',
   },
   {
     key: 'reference_min',
@@ -214,8 +214,9 @@ export const REFERENCE_BOUND_PARAMS: ReferenceBoundSpec[] = [
     defaultValue: REFERENCE_MIN_DEFAULT,
     help: 'The lowest level the adaptive reference may reach, however quiet the dialogue gets.',
     effect:
-      'Higher: quiet dialogue cannot pull the reference down, so quiet scenes are left alone. ' +
-      'Lower: the reference follows quiet dialogue further. It cannot go above the max.',
+      'The threshold is the reference plus headroom. Higher: the threshold cannot drop in ' +
+      'quiet scenes. Lower: the reference follows quieter dialogue further. It cannot go ' +
+      'above the max.',
   },
   {
     key: 'reference_slew',

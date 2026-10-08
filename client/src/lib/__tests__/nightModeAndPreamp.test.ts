@@ -5,6 +5,7 @@ import { addNightMode, findNightMode } from '../nightModeEdit';
 import { referenceBoundRows } from '../nightModeParams';
 import { channelsAtPipelineIndex } from '../pipelineChannels';
 import {
+  resetNightModeDefaults,
   setNightModeParam,
   setNightModeReferenceLevel,
   setNightModeReferenceMax,
@@ -263,5 +264,76 @@ describe('night mode reference slider rows', () => {
     config = setNightModeReferenceSlew(config, name, 2);
     config = setNightModeReferenceSlew(config, name, 0.5);
     expect(values()).toEqual([-25, -30, 0.5]);
+  });
+});
+
+describe('night mode reference bounds, edge cases', () => {
+  function base() {
+    const config = addNightMode(fourToTwoConfig());
+    return { config, name: findNightMode(config)!.name };
+  }
+  const p = (c: GuiReadyCamillaDSPConfig, name: string) => c.processors[name].parameters as any;
+  const invalid = (config: GuiReadyCamillaDSPConfig, name: string) => {
+    const c = JSON.parse(JSON.stringify(config));
+    c.processors[name].parameters.reference_min = -20;
+    c.processors[name].parameters.reference_max = -30;
+    return c as GuiReadyCamillaDSPConfig;
+  };
+
+  it('keeps min, max and follow speed through a pin round trip', () => {
+    const { config, name } = base();
+    let c = setNightModeReferenceMax(config, name, -20);
+    c = setNightModeReferenceMin(c, name, -40);
+    c = setNightModeReferenceSlew(c, name, 1);
+    const round = setNightModeReferenceLevel(setNightModeReferenceLevel(c, name, -30), name, null);
+    expect(p(round, name).reference_max).toBe(-20);
+    expect(p(round, name).reference_min).toBe(-40);
+    expect(p(round, name).reference_slew).toBe(1);
+  });
+
+  it('reset to defaults clears pin, bounds and follow speed', () => {
+    const { config, name } = base();
+    let c = setNightModeReferenceMax(config, name, -20);
+    c = setNightModeReferenceMin(c, name, -40);
+    c = setNightModeReferenceSlew(c, name, 1);
+    c = setNightModeReferenceLevel(c, name, -30);
+    c = setNightModeParam(c, name, 'amount', 40);
+    const reset = resetNightModeDefaults(c, name);
+    for (const k of ['reference_min', 'reference_max', 'reference_slew']) {
+      expect(k in p(reset, name)).toBe(false);
+    }
+    expect(p(reset, name).reference_level).toBeNull();
+    expect(p(reset, name).amount).toBe(100);
+  });
+
+  it('min at -12 pulls max to -12 (default, key dropped); max at -45 pulls min to -45', () => {
+    const { config, name } = base();
+    const a = setNightModeReferenceMin(setNightModeReferenceMax(config, name, -30), name, -12);
+    expect(p(a, name).reference_min).toBe(-12);
+    expect('reference_max' in p(a, name)).toBe(false);
+    const b = setNightModeReferenceMax(setNightModeReferenceMin(config, name, -30), name, -45);
+    expect(p(b, name).reference_max).toBe(-45);
+    expect('reference_min' in p(b, name)).toBe(false);
+  });
+
+  it('ignores non-finite input', () => {
+    const { config, name } = base();
+    for (const v of [NaN, Infinity, -Infinity]) {
+      expect(setNightModeReferenceMin(config, name, v)).toEqual(config);
+      expect(setNightModeReferenceMax(config, name, v)).toEqual(config);
+      expect(setNightModeReferenceSlew(config, name, v)).toEqual(config);
+    }
+  });
+
+  it('normalises an existing min > max config on any edit', () => {
+    const { config, name } = base();
+    const bad = invalid(config, name);
+    const check = (c: GuiReadyCamillaDSPConfig) =>
+      expect(p(c, name).reference_min ?? -45).toBeLessThanOrEqual(p(c, name).reference_max ?? -12);
+    check(setNightModeReferenceSlew(bad, name, 1));
+    check(setNightModeReferenceMin(bad, name, -25));
+    check(setNightModeReferenceMax(bad, name, -28));
+    check(setNightModeReferenceMin(bad, name, -40));
+    check(setNightModeReferenceMax(bad, name, -10));
   });
 });

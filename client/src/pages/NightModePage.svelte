@@ -2,6 +2,7 @@
   import { connectionState, dspConfig, updateConfig } from '../state/dspStore';
   import { commitPipelineConfigChange } from '../state/pipelineEditor';
   import {
+    resetNightModeDefaults,
     setNightModeParam,
     setNightModeReferenceLevel,
     setNightModeReferenceMax,
@@ -15,7 +16,6 @@
     REFERENCE_LEVEL_MIN,
     REFERENCE_LEVEL_MAX,
     REFERENCE_LEVEL_DEFAULT_PIN,
-    REFERENCE_BOUND_PARAMS,
     referenceBoundRows,
     type ReferenceBoundKey,
     type NightModeParamKey,
@@ -55,17 +55,7 @@
   function resetDefaults(): void {
     if (!nightMode) return;
     const name = nightMode.name;
-    apply((config) => {
-      const withParams = NIGHT_MODE_PARAMS.reduce(
-        (acc, spec) => setNightModeParam(acc, name, spec.key, spec.defaultValue),
-        config
-      );
-      const unpinned = setNightModeReferenceLevel(withParams, name, null);
-      return REFERENCE_BOUND_PARAMS.reduce(
-        (acc, spec) => boundEditor(spec.key)(acc, name, spec.defaultValue),
-        unpinned
-      );
-    });
+    apply((config) => resetNightModeDefaults(config, name));
   }
 
   function paramValue(key: NightModeParamKey, fallback: number): number {
@@ -191,8 +181,8 @@
         Normally the threshold tracks the dialogue level automatically, which is what
         lets one setup work on both a quiet drama and a loud blockbuster — but on
         louder content it also tracks upward, narrowing the gap it has to work with.
-        Limiting how high it may go with the max slider below keeps it adaptive.
-        Pinning it to a fixed level removes that ceiling completely: measured on a film trailer,
+        Lowering Reference max keeps the reference adaptive while capping how high it
+        goes. Pinning it to a fixed level removes the ceiling completely: measured on a film trailer,
         pinning turned an 11–14 dB reduction on the loudest moments into 31 dB. The
         trade-off is that a pin doesn't know this content's actual dialogue level, so
         it can compress quiet dialogue too, not just the loud parts — start with it
