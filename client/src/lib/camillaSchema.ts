@@ -292,7 +292,7 @@ export interface NightModeParameters {
   process_channels?: number[];
   amount?: PrcFmt;
   max_attenuation?: PrcFmt;
-  bass_reduction?: PrcFmt; // dB, 0..30, default 4
+  bass_reduction?: PrcFmt; // dB, 0..30, default 10
   bass_frequency?: PrcFmt; // Hz, default 120
   headroom?: PrcFmt;
   ratio?: PrcFmt;

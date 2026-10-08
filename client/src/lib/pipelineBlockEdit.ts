@@ -258,7 +258,7 @@ export function createNewProcessorBlock(
         channels: 2,
         amount: 100,
         max_attenuation: 28,
-        bass_reduction: 4,
+        bass_reduction: 10,
         headroom: 0,
         ratio: 12.0,
         transient_softening: 100,

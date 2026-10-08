@@ -124,14 +124,15 @@ export const NIGHT_MODE_PARAMS: NightModeParamSpec[] = [
     unit: ' dB',
     min: 0,
     max: 30,
-    defaultValue: 4,
+    defaultValue: 10,
     help:
-      'Depth of a bass shelf below the bass frequency. It deepens with the amount of ' +
-      'gain reduction night mode is applying and reaches full depth at 12 dB of reduction.',
+      'Extra cut below the bass frequency, subtracted from the signal in proportion to ' +
+      'how hard night mode is working: full depth at 12 dB of gain reduction, none in ' +
+      'quiet scenes.',
     effect:
-      'Higher: less low end in loud scenes, which is what carries through walls and ' +
-      'floors. Lower: loud scenes keep their weight. Quiet scenes with no reduction ' +
-      'are not changed. 0 turns the shelf off.',
+      'Higher: deeper cut in loud scenes, which is what carries through walls and ' +
+      'floors. With the default 120 Hz bass frequency the cut at 50 Hz tops out around ' +
+      '8 dB however high this is set; raise Bass frequency for more. 0 turns it off.',
   },
   {
     key: 'bass_frequency',
@@ -140,10 +141,12 @@ export const NIGHT_MODE_PARAMS: NightModeParamSpec[] = [
     min: 60,
     max: 300,
     defaultValue: 120,
-    help: 'The corner frequency of the bass shelf: the bass reduction applies below it.',
+    help:
+      'Corner of the bass cut. A first-order lowpass at this frequency is subtracted ' +
+      'from the signal, so the cut reaches up to roughly this frequency.',
     effect:
-      'Higher: the shelf reaches further up into the low mids. Lower: only the deepest ' +
-      'bass is reduced.',
+      'Higher: the cut reaches further up and is stronger in the 50 to 150 Hz region. ' +
+      'Lower: only the deepest bass is cut.',
   },
   {
     key: 'presence_gain',

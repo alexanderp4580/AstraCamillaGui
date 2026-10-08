@@ -358,7 +358,7 @@ describe('night mode ranges and bass frequency', () => {
     expect(REFERENCE_MIN_DEFAULT).toBe(-100);
     expect(REFERENCE_MAX_DEFAULT).toBe(-12);
     const bass = getNightModeParamSpec('bass_reduction')!;
-    expect([bass.min, bass.max, bass.defaultValue]).toEqual([0, 30, 4]);
+    expect([bass.min, bass.max, bass.defaultValue]).toEqual([0, 30, 10]);
     const { config, name } = base();
     expect(p(setNightModeReferenceMin(config, name, -75), name).reference_min).toBe(-75);
     expect(p(setNightModeReferenceMax(config, name, -99.4), name).reference_max).toBe(-99);
@@ -396,6 +396,6 @@ describe('night mode ranges and bass frequency', () => {
     c = setNightModeParam(c, name, 'bass_reduction', 25);
     const reset = resetNightModeDefaults(c, name);
     expect('bass_frequency' in p(reset, name)).toBe(false);
-    expect(p(reset, name).bass_reduction).toBe(4);
+    expect(p(reset, name).bass_reduction).toBe(10);
   });
 });
