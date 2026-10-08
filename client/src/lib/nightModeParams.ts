@@ -66,11 +66,12 @@ export const NIGHT_MODE_PARAMS: NightModeParamSpec[] = [
     max: 30,
     defaultValue: 6,
     help:
-      'Loud sounds are never turned down below this many dB above the dialogue level, ' +
+      'Loud sounds are never turned down below this many dB above the reference level, ' +
       'so explosions stay audible however strong the other settings are.',
     effect:
-      'Higher: bangs stay louder relative to dialogue. 0: loud sounds may be turned all ' +
-      'the way down to dialogue level.',
+      'Higher: bangs stay louder. If bangs still sound too quiet, raise it, especially ' +
+      'when the reference is set well below the dialogue level. 0: loud sounds may be ' +
+      'turned all the way down to the reference level.',
   },
   {
     key: 'headroom',

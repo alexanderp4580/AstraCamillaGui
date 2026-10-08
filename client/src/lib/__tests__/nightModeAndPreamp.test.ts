@@ -420,6 +420,14 @@ describe('night mode loud sound floor', () => {
     ]);
   });
 
+  it('describes the floor relative to the reference level, not the dialogue level', () => {
+    const spec = getNightModeParamSpec('loud_floor')!;
+    expect(spec.help).toContain('above the reference level');
+    expect(spec.effect).toContain('down to the reference level');
+    expect(spec.help).not.toContain('dialogue');
+    expect(spec.effect).not.toContain('down to dialogue');
+  });
+
   it('is written for new blocks at the default', () => {
     const { config, name } = base();
     expect(p(config, name).loud_floor).toBe(6);

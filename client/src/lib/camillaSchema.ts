@@ -292,7 +292,7 @@ export interface NightModeParameters {
   process_channels?: number[];
   amount?: PrcFmt;
   max_attenuation?: PrcFmt;
-  loud_floor?: PrcFmt; // dB above the dialogue reference, 0..60, default 6
+  loud_floor?: PrcFmt; // dB above the reference level, 0..60, default 6
   bass_reduction?: PrcFmt; // dB, 0..30, default 10
   bass_frequency?: PrcFmt; // Hz, default 120
   headroom?: PrcFmt;
