@@ -8,6 +8,12 @@ import {
   getNightModeParamSpec,
   REFERENCE_LEVEL_MIN,
   REFERENCE_LEVEL_MAX,
+  REFERENCE_MIN_DEFAULT,
+  REFERENCE_MAX_DEFAULT,
+  REFERENCE_SLEW_MIN,
+  REFERENCE_SLEW_MAX,
+  REFERENCE_SLEW_DEFAULT,
+  REFERENCE_SLEW_STEP,
   type NightModeParamKey,
 } from './nightModeParams';
 
@@ -190,5 +196,88 @@ export function setNightModeReferenceLevel(
       ? null
       : Math.round(Math.min(REFERENCE_LEVEL_MAX, Math.max(REFERENCE_LEVEL_MIN, value)) * 100) / 100;
 
+  return updated;
+}
+
+function nightModeParameters(
+  config: GuiReadyCamillaDSPConfig,
+  processorName: string
+): { updated: GuiReadyCamillaDSPConfig; parameters: Record<string, any> } {
+  const updated = JSON.parse(JSON.stringify(config)) as GuiReadyCamillaDSPConfig;
+
+  if (!updated.processors || !updated.processors[processorName]) {
+    throw new Error(`Processor "${processorName}" not found`);
+  }
+
+  const processor = updated.processors[processorName];
+  if (processor.type !== 'NightMode') {
+    throw new Error(`Processor "${processorName}" is not a NightMode`);
+  }
+
+  return { updated, parameters: processor.parameters as Record<string, any> };
+}
+
+function setOrOmit(parameters: Record<string, any>, key: string, value: number, defaultValue: number): void {
+  if (value === defaultValue) {
+    delete parameters[key];
+  } else {
+    parameters[key] = value;
+  }
+}
+
+function clampBound(value: number): number {
+  return Math.round(Math.min(REFERENCE_LEVEL_MAX, Math.max(REFERENCE_LEVEL_MIN, value)));
+}
+
+/**
+ * Set the lowest level the adaptive reference may reach. Raising it above the
+ * current max raises the max to match, so min <= max always holds. The default
+ * is omitted from the config.
+ */
+export function setNightModeReferenceMin(
+  config: GuiReadyCamillaDSPConfig,
+  processorName: string,
+  value: number
+): GuiReadyCamillaDSPConfig {
+  const { updated, parameters } = nightModeParameters(config, processorName);
+  const min = clampBound(value);
+  const max = Number(parameters.reference_max ?? REFERENCE_MAX_DEFAULT);
+  setOrOmit(parameters, 'reference_min', min, REFERENCE_MIN_DEFAULT);
+  if (min > max) setOrOmit(parameters, 'reference_max', min, REFERENCE_MAX_DEFAULT);
+  return updated;
+}
+
+/**
+ * Set the highest level the adaptive reference may reach. Lowering it below the
+ * current min lowers the min to match, so min <= max always holds. The default
+ * is omitted from the config.
+ */
+export function setNightModeReferenceMax(
+  config: GuiReadyCamillaDSPConfig,
+  processorName: string,
+  value: number
+): GuiReadyCamillaDSPConfig {
+  const { updated, parameters } = nightModeParameters(config, processorName);
+  const max = clampBound(value);
+  const min = Number(parameters.reference_min ?? REFERENCE_MIN_DEFAULT);
+  setOrOmit(parameters, 'reference_max', max, REFERENCE_MAX_DEFAULT);
+  if (max < min) setOrOmit(parameters, 'reference_min', max, REFERENCE_MIN_DEFAULT);
+  return updated;
+}
+
+/**
+ * Set how fast the adaptive reference follows the dialogue level (dB/s), clamped
+ * to 0.05..3 in steps of 0.05. The default is omitted from the config.
+ */
+export function setNightModeReferenceSlew(
+  config: GuiReadyCamillaDSPConfig,
+  processorName: string,
+  value: number
+): GuiReadyCamillaDSPConfig {
+  const { updated, parameters } = nightModeParameters(config, processorName);
+  const stepped = Math.round(value / REFERENCE_SLEW_STEP) * REFERENCE_SLEW_STEP;
+  const slew =
+    Math.round(Math.min(REFERENCE_SLEW_MAX, Math.max(REFERENCE_SLEW_MIN, stepped)) * 100) / 100;
+  setOrOmit(parameters, 'reference_slew', slew, REFERENCE_SLEW_DEFAULT);
   return updated;
 }

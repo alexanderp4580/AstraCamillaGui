@@ -4,6 +4,9 @@
   import {
     setNightModeParam,
     setNightModeReferenceLevel,
+    setNightModeReferenceMax,
+    setNightModeReferenceMin,
+    setNightModeReferenceSlew,
     setProcessorStepBypassed,
   } from '../lib/pipelineProcessorEdit';
   import { addNightMode, findNightMode } from '../lib/nightModeEdit';
@@ -12,6 +15,9 @@
     REFERENCE_LEVEL_MIN,
     REFERENCE_LEVEL_MAX,
     REFERENCE_LEVEL_DEFAULT_PIN,
+    REFERENCE_BOUND_PARAMS,
+    referenceBoundRows,
+    type ReferenceBoundKey,
     type NightModeParamKey,
   } from '../lib/nightModeParams';
   import type { GuiReadyCamillaDSPConfig } from '../lib/camillaDSP';
@@ -54,7 +60,11 @@
         (acc, spec) => setNightModeParam(acc, name, spec.key, spec.defaultValue),
         config
       );
-      return setNightModeReferenceLevel(withParams, name, null);
+      const unpinned = setNightModeReferenceLevel(withParams, name, null);
+      return REFERENCE_BOUND_PARAMS.reduce(
+        (acc, spec) => boundEditor(spec.key)(acc, name, spec.defaultValue),
+        unpinned
+      );
     });
   }
 
@@ -79,6 +89,25 @@
     const name = nightMode.name;
     apply((config) => setNightModeReferenceLevel(config, name, value));
   }
+
+  function boundEditor(key: ReferenceBoundKey) {
+    return key === 'reference_max'
+      ? setNightModeReferenceMax
+      : key === 'reference_min'
+        ? setNightModeReferenceMin
+        : setNightModeReferenceSlew;
+  }
+
+  function setReferenceBound(key: ReferenceBoundKey, value: number): void {
+    if (!nightMode) return;
+    const name = nightMode.name;
+    const edit = boundEditor(key);
+    apply((config) => edit(config, name, value));
+  }
+
+  // Empty while pinned. Computed in one reactive statement for the same reason as
+  // paramRows below.
+  $: boundRows = nightMode ? referenceBoundRows(nightMode.parameters) : [];
 
   // Precomputed so the each-block below reacts to nightMode changing: a per-item
   // function call in the template (`paramValue(spec.key, ...)`) only reads nightMode
@@ -162,7 +191,8 @@
         Normally the threshold tracks the dialogue level automatically, which is what
         lets one setup work on both a quiet drama and a loud blockbuster — but on
         louder content it also tracks upward, narrowing the gap it has to work with.
-        Pinning it to a fixed level removes that ceiling: measured on a film trailer,
+        Limiting how high it may go with the max slider below keeps it adaptive.
+        Pinning it to a fixed level removes that ceiling completely: measured on a film trailer,
         pinning turned an 11–14 dB reduction on the loudest moments into 31 dB. The
         trade-off is that a pin doesn't know this content's actual dialogue level, so
         it can compress quiet dialogue too, not just the loud parts — start with it
@@ -177,6 +207,24 @@
           formatValue={(v) => `${v.toFixed(0)} dBFS`}
           on:change={(e) => setReferenceLevel(e.detail.value)}
         />
+      {:else}
+        {#each boundRows as { spec, value } (spec.key)}
+          <div class="param">
+            <HSlider
+              label={spec.label}
+              {value}
+              min={spec.min}
+              max={spec.max}
+              formatValue={(v) =>
+                spec.key === 'reference_slew'
+                  ? `${v.toFixed(2)}${spec.unit}`
+                  : `${v.toFixed(0)}${spec.unit}`}
+              on:change={(e) => setReferenceBound(spec.key, e.detail.value)}
+            />
+            <p class="param-help">{spec.help}</p>
+            <p class="param-help effect">{spec.effect}</p>
+          </div>
+        {/each}
       {/if}
     </div>
   {/if}

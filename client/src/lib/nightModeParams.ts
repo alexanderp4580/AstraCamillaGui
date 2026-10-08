@@ -165,3 +165,87 @@ export function getNightModeParamSpec(key: string): NightModeParamSpec | undefin
 export const REFERENCE_LEVEL_MIN = -45;
 export const REFERENCE_LEVEL_MAX = -12;
 export const REFERENCE_LEVEL_DEFAULT_PIN = -33;
+
+/**
+ * Bounds for the adaptive reference: it is clamped into [reference_min, reference_max]
+ * and follows the dialogue level at `reference_slew` dB/s. A pinned reference
+ * (`reference_level`) ignores all three. Ranges match AstraCamillaDsp's
+ * `validate_night_mode`; min must not exceed max.
+ */
+export const REFERENCE_MIN_DEFAULT = -45;
+export const REFERENCE_MAX_DEFAULT = -12;
+export const REFERENCE_SLEW_MIN = 0.05;
+export const REFERENCE_SLEW_MAX = 3;
+export const REFERENCE_SLEW_DEFAULT = 0.25;
+export const REFERENCE_SLEW_STEP = 0.05;
+
+export type ReferenceBoundKey = 'reference_max' | 'reference_min' | 'reference_slew';
+
+export interface ReferenceBoundSpec {
+  key: ReferenceBoundKey;
+  label: string;
+  unit: string;
+  min: number;
+  max: number;
+  defaultValue: number;
+  help: string;
+  effect: string;
+}
+
+export const REFERENCE_BOUND_PARAMS: ReferenceBoundSpec[] = [
+  {
+    key: 'reference_max',
+    label: 'Reference max (never go above)',
+    unit: ' dBFS',
+    min: REFERENCE_LEVEL_MIN,
+    max: REFERENCE_LEVEL_MAX,
+    defaultValue: REFERENCE_MAX_DEFAULT,
+    help: 'The highest level the adaptive reference may reach, however loud the dialogue gets.',
+    effect:
+      'Lower: loud content cannot pull the reference up, so loud passages are reduced more. ' +
+      'Higher: the reference follows loud dialogue further.',
+  },
+  {
+    key: 'reference_min',
+    label: 'Reference min (never go below)',
+    unit: ' dBFS',
+    min: REFERENCE_LEVEL_MIN,
+    max: REFERENCE_LEVEL_MAX,
+    defaultValue: REFERENCE_MIN_DEFAULT,
+    help: 'The lowest level the adaptive reference may reach, however quiet the dialogue gets.',
+    effect:
+      'Higher: quiet dialogue cannot pull the reference down, so quiet scenes are left alone. ' +
+      'Lower: the reference follows quiet dialogue further. It cannot go above the max.',
+  },
+  {
+    key: 'reference_slew',
+    label: 'Follow speed',
+    unit: ' dB/s',
+    min: REFERENCE_SLEW_MIN,
+    max: REFERENCE_SLEW_MAX,
+    defaultValue: REFERENCE_SLEW_DEFAULT,
+    help: 'How fast the reference moves toward the current dialogue level, in dB per second.',
+    effect:
+      'Higher: it adapts quickly to a change of scene or volume. Lower: it moves slowly ' +
+      'and stays steadier through short loud or quiet moments.',
+  },
+];
+
+export interface ReferenceBoundRow {
+  spec: ReferenceBoundSpec;
+  value: number;
+}
+
+/**
+ * Slider rows for the adaptive reference bounds: empty while the reference is
+ * pinned, since a pin overrides them. Built from the processor parameters in one
+ * call so the page re-evaluates it whenever they change.
+ */
+export function referenceBoundRows(parameters: Record<string, unknown>): ReferenceBoundRow[] {
+  const pinned = parameters.reference_level ?? null;
+  if (pinned !== null) return [];
+  return REFERENCE_BOUND_PARAMS.map((spec) => {
+    const raw = parameters[spec.key];
+    return { spec, value: raw === null || raw === undefined ? spec.defaultValue : Number(raw) };
+  });
+}

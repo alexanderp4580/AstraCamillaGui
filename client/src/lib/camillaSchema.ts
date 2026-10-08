@@ -298,6 +298,10 @@ export interface NightModeParameters {
   transient_softening?: PrcFmt;
   dialogue_protection?: PrcFmt;
   presence_gain?: PrcFmt;
+  reference_level?: number | null; // pinned reference, dBFS in [-45, -12]
+  reference_min?: number; // dBFS, default -45
+  reference_max?: number; // dBFS, default -12; must be >= reference_min
+  reference_slew?: number; // dB/s, default 0.25, > 0
 }
 
 // 15. DiffEq Parameters
