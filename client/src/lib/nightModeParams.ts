@@ -8,6 +8,7 @@ export type NightModeParamKey =
   | 'amount'
   | 'max_attenuation'
   | 'bass_reduction'
+  | 'bass_frequency'
   | 'headroom'
   | 'ratio'
   | 'transient_softening'
@@ -122,14 +123,27 @@ export const NIGHT_MODE_PARAMS: NightModeParamSpec[] = [
     label: 'Bass Reduction',
     unit: ' dB',
     min: 0,
-    max: 10,
-    defaultValue: 10,
+    max: 30,
+    defaultValue: 4,
     help:
-      'Extra cut below about 120 Hz, applied only while night mode is actively ' +
-      'turning something down. Quiet scenes keep their full tone.',
+      'Depth of a bass shelf below the bass frequency. It deepens with the amount of ' +
+      'gain reduction night mode is applying and reaches full depth at 12 dB of reduction.',
     effect:
-      'Higher: less rumble in loud scenes, which is what carries through walls and ' +
-      'floors. Lower: loud scenes keep their weight.',
+      'Higher: less low end in loud scenes, which is what carries through walls and ' +
+      'floors. Lower: loud scenes keep their weight. Quiet scenes with no reduction ' +
+      'are not changed. 0 turns the shelf off.',
+  },
+  {
+    key: 'bass_frequency',
+    label: 'Bass frequency',
+    unit: ' Hz',
+    min: 60,
+    max: 300,
+    defaultValue: 120,
+    help: 'The corner frequency of the bass shelf: the bass reduction applies below it.',
+    effect:
+      'Higher: the shelf reaches further up into the low mids. Lower: only the deepest ' +
+      'bass is reduced.',
   },
   {
     key: 'presence_gain',
@@ -162,7 +176,7 @@ export function getNightModeParamSpec(key: string): NightModeParamSpec | undefin
  * 31 dB. The trade-off: a pin doesn't adapt to this content's actual dialogue level,
  * so it can compress quiet dialogue too, not just the loud parts.
  */
-export const REFERENCE_LEVEL_MIN = -45;
+export const REFERENCE_LEVEL_MIN = -100;
 export const REFERENCE_LEVEL_MAX = -12;
 export const REFERENCE_LEVEL_DEFAULT_PIN = -33;
 
@@ -172,7 +186,7 @@ export const REFERENCE_LEVEL_DEFAULT_PIN = -33;
  * (`reference_level`) ignores all three. Ranges match AstraCamillaDsp's
  * `validate_night_mode`; min must not exceed max.
  */
-export const REFERENCE_MIN_DEFAULT = -45;
+export const REFERENCE_MIN_DEFAULT = -100;
 export const REFERENCE_MAX_DEFAULT = -12;
 export const REFERENCE_SLEW_MIN = 0.05;
 export const REFERENCE_SLEW_MAX = 3;
@@ -250,3 +264,5 @@ export function referenceBoundRows(parameters: Record<string, unknown>): Referen
     return { spec, value: raw === null || raw === undefined ? spec.defaultValue : Number(raw) };
   });
 }
+
+export const BASS_FREQUENCY_STEP = 5;

@@ -15,6 +15,7 @@ import {
   REFERENCE_SLEW_MAX,
   REFERENCE_SLEW_DEFAULT,
   REFERENCE_SLEW_STEP,
+  BASS_FREQUENCY_STEP,
   type NightModeParamKey,
 } from './nightModeParams';
 
@@ -156,6 +157,8 @@ export function setNightModeParam(
     throw new Error(`Processor "${processorName}" is not a NightMode`);
   }
 
+  if (param === 'bass_frequency') return setNightModeBassFrequency(config, processorName, value);
+
   // Clamp to the range the DSP accepts, rounded to 2 decimals
   let clampedValue: number;
   const spec = getNightModeParamSpec(param);
@@ -173,7 +176,7 @@ export function setNightModeParam(
 /**
  * Pin or unpin the dialogue reference. Pinned (a number) stops it adapting to the
  * content and holds it at a fixed level instead — the DSP only accepts a pinned
- * value inside [-45, -12] dBFS. Unpinned (null) restores the normal adaptive
+ * value inside [-100, -12] dBFS. Unpinned (null) restores the normal adaptive
  * behaviour, which is what makes one setup work across quiet and loud material.
  */
 export function setNightModeReferenceLevel(
@@ -286,6 +289,23 @@ export function setNightModeReferenceSlew(
   const min = Number(parameters.reference_min ?? REFERENCE_MIN_DEFAULT);
   const max = Number(parameters.reference_max ?? REFERENCE_MAX_DEFAULT);
   if (min > max) setOrOmit(parameters, 'reference_min', max, REFERENCE_MIN_DEFAULT);
+  return updated;
+}
+
+/**
+ * Set the bass shelf corner frequency (Hz), clamped to 60..300 in steps of 5.
+ * The default is omitted from the config.
+ */
+export function setNightModeBassFrequency(
+  config: GuiReadyCamillaDSPConfig,
+  processorName: string,
+  value: number
+): GuiReadyCamillaDSPConfig {
+  if (!Number.isFinite(value)) return config;
+  const { updated, parameters } = nightModeParameters(config, processorName);
+  const spec = getNightModeParamSpec('bass_frequency')!;
+  const stepped = Math.round(value / BASS_FREQUENCY_STEP) * BASS_FREQUENCY_STEP;
+  setOrOmit(parameters, 'bass_frequency', Math.min(spec.max, Math.max(spec.min, stepped)), spec.defaultValue);
   return updated;
 }
 

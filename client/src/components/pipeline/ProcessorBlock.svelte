@@ -47,7 +47,7 @@
         { label: 'Channels', value: String(params.channels || '?') },
         { label: 'Amount', value: formatParam(params.amount ?? 100) },
         { label: 'Max Attenuation', value: `${formatParam(params.max_attenuation ?? 28)} dB` },
-        { label: 'Bass Reduction', value: `${formatParam(params.bass_reduction ?? 10)} dB` },
+        { label: 'Bass Reduction', value: `${formatParam(params.bass_reduction ?? 4)} dB` },
         { label: 'Dialogue Protection', value: formatParam(params.dialogue_protection ?? 60) },
       ];
     }

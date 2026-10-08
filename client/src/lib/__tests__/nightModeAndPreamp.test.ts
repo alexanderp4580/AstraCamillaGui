@@ -2,10 +2,18 @@ import { describe, it, expect } from 'vitest';
 import type { GuiReadyCamillaDSPConfig } from '../camillaDSP';
 import { applyEqBandsToConfig, extractEqBandsFromConfig } from '../camillaEqMapping';
 import { addNightMode, findNightMode } from '../nightModeEdit';
-import { referenceBoundRows } from '../nightModeParams';
+import {
+  getNightModeParamSpec,
+  NIGHT_MODE_PARAMS,
+  REFERENCE_LEVEL_MIN,
+  REFERENCE_MAX_DEFAULT,
+  REFERENCE_MIN_DEFAULT,
+  referenceBoundRows,
+} from '../nightModeParams';
 import { channelsAtPipelineIndex } from '../pipelineChannels';
 import {
   resetNightModeDefaults,
+  setNightModeBassFrequency,
   setNightModeParam,
   setNightModeReferenceLevel,
   setNightModeReferenceMax,
@@ -98,8 +106,8 @@ describe('night mode', () => {
     const config = addNightMode(fourToTwoConfig());
     const name = findNightMode(config)!.name;
 
-    const bass = setNightModeParam(config, name, 'bass_reduction', 24);
-    expect(bass.processors[name].parameters.bass_reduction).toBe(10);
+    const bass = setNightModeParam(config, name, 'bass_reduction', 40);
+    expect(bass.processors[name].parameters.bass_reduction).toBe(30);
 
     const presenceHigh = setNightModeParam(config, name, 'presence_gain', 12);
     expect(presenceHigh.processors[name].parameters.presence_gain).toBe(6);
@@ -112,8 +120,8 @@ describe('night mode', () => {
     const config = addNightMode(fourToTwoConfig());
     const name = findNightMode(config)!.name;
 
-    const pinned = setNightModeReferenceLevel(config, name, -60);
-    expect(pinned.processors[name].parameters.reference_level).toBe(-45);
+    const pinned = setNightModeReferenceLevel(config, name, -150);
+    expect(pinned.processors[name].parameters.reference_level).toBe(-100);
 
     const pinnedHigh = setNightModeReferenceLevel(config, name, 0);
     expect(pinnedHigh.processors[name].parameters.reference_level).toBe(-12);
@@ -146,9 +154,9 @@ describe('night mode reference bounds', () => {
   it('clamps to the DSP ranges', () => {
     const { config, name } = base();
     expect(p(setNightModeReferenceMax(config, name, 5), name).reference_max).toBeUndefined();
-    expect(p(setNightModeReferenceMax(config, name, -90), name).reference_max).toBe(-45);
+    expect(p(setNightModeReferenceMax(config, name, -150), name).reference_max).toBe(-100);
     expect(p(setNightModeReferenceMin(config, name, 5), name).reference_min).toBe(-12);
-    expect(p(setNightModeReferenceMin(config, name, -90), name).reference_min).toBeUndefined();
+    expect(p(setNightModeReferenceMin(config, name, -150), name).reference_min).toBeUndefined();
     expect(p(setNightModeReferenceSlew(config, name, 0), name).reference_slew).toBe(0.05);
     expect(p(setNightModeReferenceSlew(config, name, 99), name).reference_slew).toBe(3);
   });
@@ -188,7 +196,7 @@ describe('night mode reference bounds', () => {
       1
     );
     const reset = setNightModeReferenceSlew(
-      setNightModeReferenceMin(setNightModeReferenceMax(set, name, -12), name, -45),
+      setNightModeReferenceMin(setNightModeReferenceMax(set, name, -12), name, -100),
       name,
       0.25
     );
@@ -200,12 +208,12 @@ describe('night mode reference bounds', () => {
   it('never emits min > max or out-of-range values across a sweep', () => {
     const { config, name } = base();
     let c = config;
-    for (const v of [-50, -12, -30, -45, 0, -20, -44, -13]) {
+    for (const v of [-150, -12, -30, -45, 0, -20, -99, -13]) {
       c = setNightModeReferenceMin(c, name, v);
       c = setNightModeReferenceMax(c, name, v + 7);
-      const mn = p(c, name).reference_min ?? -45;
+      const mn = p(c, name).reference_min ?? -100;
       const mx = p(c, name).reference_max ?? -12;
-      expect(mn).toBeGreaterThanOrEqual(-45);
+      expect(mn).toBeGreaterThanOrEqual(-100);
       expect(mx).toBeLessThanOrEqual(-12);
       expect(mn).toBeLessThanOrEqual(mx);
     }
@@ -236,7 +244,7 @@ describe('night mode reference slider rows', () => {
     const rows = referenceBoundRows(findNightMode(config)!.parameters);
     expect(rows.map((r) => [r.spec.key, r.value])).toEqual([
       ['reference_max', -12],
-      ['reference_min', -45],
+      ['reference_min', -100],
       ['reference_slew', 0.25],
     ]);
   });
@@ -256,9 +264,9 @@ describe('night mode reference slider rows', () => {
     const values = () => referenceBoundRows(findNightMode(config)!.parameters).map((r) => r.value);
 
     config = setNightModeReferenceMax(config, name, -20);
-    expect(values()).toEqual([-20, -45, 0.25]);
+    expect(values()).toEqual([-20, -100, 0.25]);
     config = setNightModeReferenceMax(config, name, -25);
-    expect(values()).toEqual([-25, -45, 0.25]);
+    expect(values()).toEqual([-25, -100, 0.25]);
     config = setNightModeReferenceMin(config, name, -30);
     expect(values()).toEqual([-25, -30, 0.25]);
     config = setNightModeReferenceSlew(config, name, 2);
@@ -306,13 +314,13 @@ describe('night mode reference bounds, edge cases', () => {
     expect(p(reset, name).amount).toBe(100);
   });
 
-  it('min at -12 pulls max to -12 (default, key dropped); max at -45 pulls min to -45', () => {
+  it('min at -12 pulls max to -12 (default, key dropped); max at -100 pulls min to -100', () => {
     const { config, name } = base();
     const a = setNightModeReferenceMin(setNightModeReferenceMax(config, name, -30), name, -12);
     expect(p(a, name).reference_min).toBe(-12);
     expect('reference_max' in p(a, name)).toBe(false);
-    const b = setNightModeReferenceMax(setNightModeReferenceMin(config, name, -30), name, -45);
-    expect(p(b, name).reference_max).toBe(-45);
+    const b = setNightModeReferenceMax(setNightModeReferenceMin(config, name, -30), name, -100);
+    expect(p(b, name).reference_max).toBe(-100);
     expect('reference_min' in p(b, name)).toBe(false);
   });
 
@@ -329,11 +337,65 @@ describe('night mode reference bounds, edge cases', () => {
     const { config, name } = base();
     const bad = invalid(config, name);
     const check = (c: GuiReadyCamillaDSPConfig) =>
-      expect(p(c, name).reference_min ?? -45).toBeLessThanOrEqual(p(c, name).reference_max ?? -12);
+      expect(p(c, name).reference_min ?? -100).toBeLessThanOrEqual(p(c, name).reference_max ?? -12);
     check(setNightModeReferenceSlew(bad, name, 1));
     check(setNightModeReferenceMin(bad, name, -25));
     check(setNightModeReferenceMax(bad, name, -28));
     check(setNightModeReferenceMin(bad, name, -40));
     check(setNightModeReferenceMax(bad, name, -10));
+  });
+});
+
+describe('night mode ranges and bass frequency', () => {
+  function base() {
+    const config = addNightMode(fourToTwoConfig());
+    return { config, name: findNightMode(config)!.name };
+  }
+  const p = (c: GuiReadyCamillaDSPConfig, name: string) => c.processors[name].parameters as any;
+
+  it('uses -100..-12 for the reference window and 0..30 dB for bass reduction', () => {
+    expect(REFERENCE_LEVEL_MIN).toBe(-100);
+    expect(REFERENCE_MIN_DEFAULT).toBe(-100);
+    expect(REFERENCE_MAX_DEFAULT).toBe(-12);
+    const bass = getNightModeParamSpec('bass_reduction')!;
+    expect([bass.min, bass.max, bass.defaultValue]).toEqual([0, 30, 4]);
+    const { config, name } = base();
+    expect(p(setNightModeReferenceMin(config, name, -75), name).reference_min).toBe(-75);
+    expect(p(setNightModeReferenceMax(config, name, -99.4), name).reference_max).toBe(-99);
+  });
+
+  it('lists Bass frequency right after Bass Reduction', () => {
+    const keys = NIGHT_MODE_PARAMS.map((s) => s.key);
+    expect(keys.indexOf('bass_frequency')).toBe(keys.indexOf('bass_reduction') + 1);
+    const spec = getNightModeParamSpec('bass_frequency')!;
+    expect([spec.label, spec.unit, spec.min, spec.max, spec.defaultValue]).toEqual([
+      'Bass frequency',
+      ' Hz',
+      60,
+      300,
+      120,
+    ]);
+  });
+
+  it('clamps and steps bass frequency, drops the key at default, ignores non-finite', () => {
+    const { config, name } = base();
+    expect(p(setNightModeBassFrequency(config, name, 200), name).bass_frequency).toBe(200);
+    expect(p(setNightModeBassFrequency(config, name, 10), name).bass_frequency).toBe(60);
+    expect(p(setNightModeBassFrequency(config, name, 900), name).bass_frequency).toBe(300);
+    expect(p(setNightModeBassFrequency(config, name, 122), name).bass_frequency).toBeUndefined();
+    expect(p(setNightModeBassFrequency(config, name, 133), name).bass_frequency).toBe(135);
+    const set = setNightModeBassFrequency(config, name, 200);
+    expect('bass_frequency' in p(setNightModeBassFrequency(set, name, 120), name)).toBe(false);
+    expect(setNightModeBassFrequency(config, name, NaN)).toEqual(config);
+    expect(() => setNightModeBassFrequency(config, 'missing', 100)).toThrow();
+  });
+
+  it('reset to defaults clears bass frequency and restores bass reduction', () => {
+    const { config, name } = base();
+    let c = setNightModeBassFrequency(config, name, 200);
+    c = setNightModeParam(c, name, 'bass_reduction', 25);
+    const reset = resetNightModeDefaults(c, name);
+    expect('bass_frequency' in p(reset, name)).toBe(false);
+    expect(p(reset, name).bass_reduction).toBe(4);
   });
 });

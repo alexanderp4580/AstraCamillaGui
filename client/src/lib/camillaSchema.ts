@@ -292,14 +292,15 @@ export interface NightModeParameters {
   process_channels?: number[];
   amount?: PrcFmt;
   max_attenuation?: PrcFmt;
-  bass_reduction?: PrcFmt;
+  bass_reduction?: PrcFmt; // dB, 0..30, default 4
+  bass_frequency?: PrcFmt; // Hz, default 120
   headroom?: PrcFmt;
   ratio?: PrcFmt;
   transient_softening?: PrcFmt;
   dialogue_protection?: PrcFmt;
   presence_gain?: PrcFmt;
-  reference_level?: number | null; // pinned reference, dBFS in [-45, -12]
-  reference_min?: number; // dBFS, default -45
+  reference_level?: number | null; // pinned reference, dBFS in [-100, -12]
+  reference_min?: number; // dBFS, default -100
   reference_max?: number; // dBFS, default -12; must be >= reference_min
   reference_slew?: number; // dB/s, default 0.25, > 0
 }
