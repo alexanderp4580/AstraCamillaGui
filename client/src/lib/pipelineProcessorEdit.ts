@@ -157,6 +157,7 @@ export function setNightModeParam(
     throw new Error(`Processor "${processorName}" is not a NightMode`);
   }
 
+  if (!Number.isFinite(value)) return config;
   if (param === 'bass_frequency') return setNightModeBassFrequency(config, processorName, value);
 
   // Clamp to the range the DSP accepts, rounded to 2 decimals

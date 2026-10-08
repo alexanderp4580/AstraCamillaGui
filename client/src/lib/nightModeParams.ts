@@ -7,6 +7,7 @@
 export type NightModeParamKey =
   | 'amount'
   | 'max_attenuation'
+  | 'loud_floor'
   | 'bass_reduction'
   | 'bass_frequency'
   | 'headroom'
@@ -56,6 +57,20 @@ export const NIGHT_MODE_PARAMS: NightModeParamSpec[] = [
       'Lower: explosions and music keep more punch, but the loudest moments stay ' +
       'louder. Higher: the loudest moments are tamed further, at the risk of sounding ' +
       'flat. 20 to 30 dB suits most films.',
+  },
+  {
+    key: 'loud_floor',
+    label: 'Loud sound floor',
+    unit: ' dB',
+    min: 0,
+    max: 30,
+    defaultValue: 6,
+    help:
+      'Loud sounds are never turned down below this many dB above the dialogue level, ' +
+      'so explosions stay audible however strong the other settings are.',
+    effect:
+      'Higher: bangs stay louder relative to dialogue. 0: loud sounds may be turned all ' +
+      'the way down to dialogue level.',
   },
   {
     key: 'headroom',

@@ -399,3 +399,56 @@ describe('night mode ranges and bass frequency', () => {
     expect(p(reset, name).bass_reduction).toBe(10);
   });
 });
+
+describe('night mode loud sound floor', () => {
+  function base() {
+    const config = addNightMode(fourToTwoConfig());
+    return { config, name: findNightMode(config)!.name };
+  }
+  const p = (c: GuiReadyCamillaDSPConfig, name: string) => c.processors[name].parameters as any;
+
+  it('is a dB slider 0..30, default 6, right after Max Attenuation', () => {
+    const keys = NIGHT_MODE_PARAMS.map((s) => s.key);
+    expect(keys.indexOf('loud_floor')).toBe(keys.indexOf('max_attenuation') + 1);
+    const spec = getNightModeParamSpec('loud_floor')!;
+    expect([spec.label, spec.unit, spec.min, spec.max, spec.defaultValue]).toEqual([
+      'Loud sound floor',
+      ' dB',
+      0,
+      30,
+      6,
+    ]);
+  });
+
+  it('is written for new blocks at the default', () => {
+    const { config, name } = base();
+    expect(p(config, name).loud_floor).toBe(6);
+  });
+
+  it('stores a value and clamps to 0..30', () => {
+    const { config, name } = base();
+    expect(p(setNightModeParam(config, name, 'loud_floor', 12), name).loud_floor).toBe(12);
+    expect(p(setNightModeParam(config, name, 'loud_floor', 45), name).loud_floor).toBe(30);
+    expect(p(setNightModeParam(config, name, 'loud_floor', -3), name).loud_floor).toBe(0);
+  });
+
+  it('ignores non-finite input', () => {
+    const { config, name } = base();
+    for (const v of [NaN, Infinity, -Infinity]) {
+      expect(setNightModeParam(config, name, 'loud_floor', v)).toEqual(config);
+    }
+  });
+
+  it('is restored by reset to defaults', () => {
+    const { config, name } = base();
+    const reset = resetNightModeDefaults(setNightModeParam(config, name, 'loud_floor', 20), name);
+    expect(p(reset, name).loud_floor).toBe(6);
+  });
+
+  it('round-trips through JSON without change', () => {
+    const { config, name } = base();
+    const c = setNightModeParam(config, name, 'loud_floor', 9);
+    expect(JSON.parse(JSON.stringify(c))).toEqual(c);
+    expect(p(c, name).loud_floor).toBe(9);
+  });
+});
